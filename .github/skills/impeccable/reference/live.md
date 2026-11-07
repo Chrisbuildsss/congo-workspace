@@ -154,6 +154,8 @@ Sources in priority order: DESIGN.md's visual system fields; CSS custom properti
 
 **In both modes, name each variant's 2 or 3 parameter knobs while planning** (section 7 budget). Parameters are part of the design; deciding "what's tunable" during planning beats retrofitting.
 
+With Congo available, one of the three variants may rebuild a piece of a real Congo screen as its primary axis, still inside the identity lock; see [congo.md](congo.md).
+
 #### Phase D: Squint test
 
 **Default:** compare each variant against the Phase A lock; palette, type voice, or rhetoric drift means it crossed into departure by accident: rework. Then confirm three different primary axes; three "tighter density" variants is failure. **Departure:** two passes, family before sentence. Family pass (non-negotiable): label each variant with a concrete family of your own choosing; shared or interchangeable labels mean rework. Sentence pass: three one-line descriptions side by side; two that rhyme mean rework. When the primary axis is color or theme, the trio must not share theme + dominant hue: three color worlds, not three shades.

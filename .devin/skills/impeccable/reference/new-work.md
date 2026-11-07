@@ -34,6 +34,8 @@ Inherit its world and composition. Resolve only the new purpose, content, hierar
 
 ### Create a whole surface inside an established world
 
+When Congo is available and has working screens that do this surface's job, offer them first as a round of real screens under [congo.md](congo.md); an answer of `scratch` continues below unchanged.
+
 Keep the visual system fixed. Derive five to seven materially different structures from the content, task, and user behavior, ordered by resonance. For a genuinely open whole page, screen, or flow, run:
 
 `.devin/skills/impeccable/scripts/impeccable concept-seed --scope surface --mode <mode>`

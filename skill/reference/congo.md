@@ -63,7 +63,7 @@ No `buildPath`, `kind`, `reroll` or `canon`: this round is not a roll, so it nev
 
 ## After installing
 
-An installed screen is now this project's code, in another product's world. Adapt it before calling it done:
+An installed screen is now this project's code, in another product's world. For a whole new surface, first record new-work's direction contract in the surface brief; no roll ran, so its FORM line names the picked screen as `congo: <id>@<version>` in place of a seed reference. Then adapt it before calling it done:
 
 1. Read the guide, the entry and the receipt. Mount the screen on the route the user asked for, install its dependencies, and build once as delivered, so later failures are yours to trace. Package source imports files with their `.ts` and `.tsx` extensions; a TypeScript project needs `allowImportingTsExtensions` (with `noEmit`) in its tsconfig.
 2. Make it this product. Map colors, type, radii, spacing and shadows to DESIGN.md's tokens, editing the package's `styles.css` and source in place. Replace the source app's name, logo, navigation and sample content with this product's truth from PRODUCT.md. Keep the structure, states and interactions that serve the task, and remove what this product has no use for. When the project already has its own app frame, keep that frame and mount the screen's page content inside it; never ship two navigations. The entry may set classes or theme attributes on `<html>` and `<body>`; make sure they do not fight the project's own. The package's stylesheet brings its own breakpoints and offsets (a table that turns into cards on phones, a margin meant for its old settings layout); check each one inside the project's frame.

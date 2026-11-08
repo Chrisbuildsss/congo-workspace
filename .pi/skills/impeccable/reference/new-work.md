@@ -28,13 +28,13 @@ Across modes, ask what success looks like, what must remain untouched, and what 
 
 ## 3. Choose the right amount of invention
 
+With Congo available, a new product, a new or replaced visual world, or a whole new surface starts from real apps: run the reference round in [congo.md](congo.md) before any roll below. An answer of `scratch`, Congo being unavailable, or no fitting app continues below unchanged.
+
 ### Extend an existing surface
 
 Inherit its world and composition. Resolve only the new purpose, content, hierarchy, states, interaction, and how the addition joins the surrounding experience. No concept tournament, and no DESIGN.md change unless the user approves a durable system change.
 
 ### Create a whole surface inside an established world
-
-When Congo is available and has working screens that do this surface's job, offer them first as a round of real screens under [congo.md](congo.md); an answer of `scratch` continues below unchanged.
 
 Keep the visual system fixed. Derive five to seven materially different structures from the content, task, and user behavior, ordered by resonance. For a genuinely open whole page, screen, or flow, run:
 

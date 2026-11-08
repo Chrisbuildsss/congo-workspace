@@ -32,24 +32,33 @@ When a command fails, show its message as written and act on it:
 
 ## Where Congo helps
 
-**Planning a new surface.** In shape, new-work, or any request for a screen an app would have (settings, billing, contacts, inbox, dashboard, onboarding), search Congo for that surface and open two to four screenshots or previews. They show how working products structure the task: what sits together, which states exist, how dense it runs. Bring that into the questions you ask and the structures you derive. It is evidence, not a direction.
+### New products and whole surfaces: real apps first
 
-**Starting from a real screen or template.** When the user wants a surface Congo has, starting from installed source saves rebuilding a working page. When they are starting a whole app from an empty folder, a template is the bigger head start. Offer either; install only on the user's choice.
+For a new product, a new or replaced visual world, or a whole new surface, Congo's apps are the starting point, before any direction roll. Real, finished apps adapted to the user's product beat invented directions: the user sees their product built on a layout that already works. Run this round whenever Congo has at least two apps that do a similar job; run concept-seed only when the user answers `scratch`, Congo is unavailable, or nothing in Congo fits.
 
-**The decision page.** For a whole new surface (new-work's "Create a whole surface inside an established world"), when the search returns at least two installable screens that do the same job, put them in front of the user before the roll. Open every candidate's screenshot first: a title that matches with a different job is not a match. Choose up to three from different apps, then write a payload under `.impeccable/questions/` (that folder ignores itself in git):
+1. **Pick the three closest apps, not screens.** `congo templates --json` lists every app with its description, tags and categories. Match on what the product does (its job, its users, its core objects and workflows), never on words in screen titles. Open a candidate's screens with `congo search --kind screen --source <app-id> --json` before you decide. An outbound calling platform for real estate, for example, matches Quibble (calls, inbox, call flows), Ghosted (real-estate CRM) and Hush (AI voice, batch calling). Take three different apps; two when only two fit.
+2. **Say what you are about to do, in one line:** the three apps and why each fits, and that you will install each app's main screen into a scratch folder to adapt it, which uses the user's Congo subscription. Their harness's approval of the install commands is their yes. If they decline, or have no subscription, build the round from the apps' screenshots and previews instead and say so.
+3. **Take each app's main screen:** its primary working screen (the home, dashboard, inbox or main editor the product lives in), never settings or billing unless that is the request. It must be installable on its own (its `next` starts with `add`). Install each into its own scratch project: `congo init --new --project <scratch>/<app>`, then `congo add <id> --destination congo --project <scratch>/<app>`, and run it.
+4. **Adapt each one to the user's product, keeping the app's design.** Put in the product's name, its domain's content and sample data (for the calling platform: leads, campaigns, calls, transcripts), relabel the navigation for its workflows, and point the obvious actions at its jobs. Keep the app's layout, components, density and visual quality; this round shows the product on each app, so do not redesign, restyle or invent new UI here. Change colors or type only where PRODUCT.md or the brief already fixes them.
+5. **Show the three adapted screens.** Capture each running adaptation at desktop width into `.impeccable/questions/congo/<app>.png` (that folder ignores itself in git), and note each local preview URL so the user can click through the real thing. Then serve the decision page with this payload, written under `.impeccable/questions/`:
 
 ```json
 {
-  "title": "Start from a real billing screen?",
-  "question": "Congo has working billing pages from real apps. Pick one to install and adapt to this design, or design it from scratch.",
+  "title": "Pick the app to build on",
+  "question": "Your product, adapted onto three real apps from Congo. Pick one to build on, or design from scratch.",
   "options": [
-    { "id": "congo:<id>", "kicker": "CONGO · <APP>", "label": "<title>", "lineage": "<App>, <route>", "thesis": "<one sentence: why this one fits the task>", "hero": "<screenshot.src>" },
-    { "id": "scratch", "label": "Design it from scratch", "thesis": "Impeccable's usual flow for a new surface, built in this design." }
+    { "id": "congo:<screen-id>", "kicker": "CONGO · <APP>", "label": "<Product> on <App>", "lineage": "<App>, <route>", "thesis": "<one sentence: why this app fits the product>", "body": "Live preview: <local URL>", "hero": ".impeccable/questions/congo/<app>.png" },
+    { "id": "scratch", "label": "Design it from scratch", "thesis": "Impeccable's usual direction roll, with no Congo app underneath." }
   ]
 }
 ```
 
-No `buildPath`, `kind`, `reroll` or `canon`: this round is not a roll, so it never touches the roll, its telemetry, or the comp lifecycle. Serve it with `.cursor/skills/impeccable/scripts/impeccable serve-question --start --payload <file>` and follow what it prints (open the URL, then `--wait --key <key>`). The page labels each screenshot as inspiration; that is its own label. An answer of `congo:<id>` means install that screen and adapt it (below); the CHOSEN CARD line's hero is its screenshot, your reference for what you are installing. `scratch` returns you to new-work unchanged, concept-seed included. A page closed unanswered, or a harness without the page, takes the structured question tool with the same options; with no answer there either, continue with `scratch`. Skip this round for a narrow request, an addition to an existing surface, or when no strong match exists.
+No `buildPath`, `kind`, `reroll` or `canon`: this round is not a roll, so it never touches the roll, its telemetry, or the comp lifecycle. Serve it with `.cursor/skills/impeccable/scripts/impeccable serve-question --start --payload <file>` and follow what it prints (open the URL, then `--wait --key <key>`). The page labels each image as inspiration; that is its own label. A page closed unanswered, or a harness without the page, takes the structured question tool with the same options; with no answer there either, continue with the first card. `scratch` returns you to new-work unchanged, concept-seed included. A steer that asks for another app runs steps 1 to 5 again with that app.
+6. **Build on the pick.** An answer of `congo:<screen-id>` means build the product on that app. For a new product, pull in the whole app (`congo create <template-id> --project <folder>`, or `congo add` for each screen the product needs inside an existing project), carry over the adaptation the user approved, and follow **After installing**. Delete the scratch folders when you are done.
+
+Skip this round for a narrow request or an addition to an existing surface; those inherit the surface they extend.
+
+**Planning anything else.** In shape, or any request for a screen an app would have (settings, billing, contacts, inbox, dashboard, onboarding), search Congo for that screen and open two to four screenshots or previews. They show how working products structure the task: what sits together, which states exist, how dense it runs. Bring that into the questions you ask and the structures you derive.
 
 **Live-mode alternatives.** One of the three variants may rebuild a piece of a Congo screen (a plan picker, a usage meter, a filter bar) as its primary axis. Read the piece from a scratch install, then write it inline in the variant format live.md requires, in this project's tokens, under the identity lock. Name the source app in your notes, never in the variant.
 
@@ -63,7 +72,11 @@ No `buildPath`, `kind`, `reroll` or `canon`: this round is not a roll, so it nev
 
 ## After installing
 
-An installed screen is now this project's code, in another product's world. For a whole new surface, first record new-work's direction contract in the surface brief; no roll ran, so its FORM line names the picked screen as `congo: <id>@<version>` in place of a seed reference. Then adapt it before calling it done:
+Installed screens and apps are now this project's code, in another product's world. For a new product or whole surface, first record new-work's direction contract in the surface brief; no roll ran, so its FORM line names the picked app and screen as `congo: <id>@<version>` in place of a seed reference.
+
+**Adapt what is there before building anything new.** Every view the product needs starts from an existing screen of the picked app: change its content, data, labels, routes and wiring, and remove what the product has no use for. When the picked app has no screen for a view, look for one in another Congo app and adapt that, in the picked app's tokens. Write a new screen only when no Congo screen can be adapted to the job, and build it from the app's own components, styles and patterns so it belongs. Custom one-off screens next to adapted ones are what make the result look generated.
+
+Then adapt it before calling it done:
 
 1. Read the guide, the entry and the receipt. Mount the screen on the route the user asked for, install its dependencies, and build once as delivered, so later failures are yours to trace. Package source imports files with their `.ts` and `.tsx` extensions; a TypeScript project needs `allowImportingTsExtensions` (with `noEmit`) in its tsconfig.
 2. Make it this product. Map colors, type, radii, spacing and shadows to DESIGN.md's tokens, editing the package's `styles.css` and source in place. Replace the source app's name, logo, navigation and sample content with this product's truth from PRODUCT.md. Keep the structure, states and interactions that serve the task, and remove what this product has no use for. When the project already has its own app frame, keep that frame and mount the screen's page content inside it; never ship two navigations. The entry may set classes or theme attributes on `<html>` and `<body>`; make sure they do not fight the project's own. The package's stylesheet brings its own breakpoints and offsets (a table that turns into cards on phones, a margin meant for its old settings layout); check each one inside the project's frame.
@@ -75,5 +88,5 @@ An installed screen is now this project's code, in another product's world. For 
 - Never ask for, print, read or store the user's Congo sign-in, tokens, or `CONGO_LIBRARY_TOKEN`, and never open the sign-in files. Signing in is the user's step in their own browser.
 - Keep every license and notice file a package installs (`LICENSE.md`, `SOURCE-PROVENANCE.md`, `ASSET-NOTICES.md`, `notices/` and the like), and carry the matching notice with any piece you copy elsewhere. Never present the result as the reference app's official product.
 - Never write Congo source into `.impeccable/`, Impeccable's caches, or any public place; it lives only where the user installed it.
-- Install only what the user chose. Searching, opening screenshots and showing options need no permission; adding source to their project does.
+- Searching, opening screenshots and showing options need no permission. Scratch installs for the reference round are announced in one line first (step 2 above). Source goes into the user's project only for the app or screen they picked.
 - Without Congo, Impeccable works exactly as before. Never block, retry in a loop, or keep reminding the user about it.

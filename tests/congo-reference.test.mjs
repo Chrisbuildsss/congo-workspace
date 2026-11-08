@@ -55,4 +55,13 @@ describe('Congo X Impeccable reference', () => {
     }
     assert.match(congo, /No `buildPath`, `kind`, `reroll` or `canon`/);
   });
+
+  it('starts new products from three real apps and adapts existing screens', () => {
+    assert.match(congo, /real apps first/);
+    assert.match(congo, /Pick the three closest apps, not screens/);
+    assert.match(congo, /main screen/);
+    assert.match(congo, /run concept-seed only when the user answers `scratch`/);
+    assert.match(congo, /Adapt what is there before building anything new/);
+    assert.match(read('skill/reference/new-work.md'), /## 3\. Choose the right amount of invention\n\nWith Congo available, a new product/);
+  });
 });

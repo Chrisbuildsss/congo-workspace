@@ -1,38 +1,47 @@
-# Impeccable
+# Congo × Impeccable
 
-The design vocabulary for your coding agent. Steer with `polish` and `bolder`, review with `critique` and `audit`, and catch AI slop before it ships.
+**Real app screens under Impeccable's design workflow.**
 
-> This is **Congo X Impeccable**, a fork that puts the Congo library of real, working app screens underneath Impeccable. See [what it adds](#congo-x-impeccable).
+Impeccable gives your coding agent a process to shape, critique, harden, and finish an interface. Congo gives it a place to start: real, working app screens, full templates, and design handbooks instead of another blank canvas.
 
-From your project root:
+> Congo × Impeccable is a fork of [Impeccable](https://github.com/pbakaus/impeccable) by Paul Bakaus. It keeps the commands and workflow, then adds Congo wherever real source helps. [See what changes](#what-congo-adds).
+
+## The difference is where the work starts
+
+| Without Congo | With Congo |
+|---|---|
+| ![Impeccable's concept picker showing invented interface directions for an outbound calling platform](docs/images/readme-without-congo.png) | ![The Congo-enabled picker showing the same product adapted onto Hush, Quibble, and Ghosted](docs/images/readme-with-congo.png) |
+
+Same Mocov brief: an AI outbound calling platform. Without Congo, Impeccable begins with conceptual interface directions. With Congo, the agent can put three real, working app patterns in front of you, adapt the one you pick to the product, and then run Impeccable's usual passes to make it yours.
+
+Congo replaces the blank canvas, not the craft process.
+
+## What Congo adds
+
+Impeccable works here exactly as it does upstream. The fork adds access to [Congo](https://buildwithcongo.com), a library of real app screens, full app templates and design handbooks that ship with working React source.
+
+- **Real starting points.** The agent can find apps built around the same core job, install their source into a scratch project, and show the product adapted onto each one before you choose a direction.
+- **The same Impeccable process.** Once you pick an app, the agent adapts it to your product and `DESIGN.md`, then runs Impeccable's critique, audit, responsive, polish, and documentation passes.
+- **Evidence beyond the first screen.** Congo also feeds planning, live-mode alternatives, direct edits, critique comparisons, and design handbooks.
+- **No new commands.** Use Impeccable exactly as before. The agent reaches for Congo when real source would improve the work.
+
+The instructions live in [skill/reference/congo.md](skill/reference/congo.md).
+
+## Install the fork
+
+`npx impeccable install` installs upstream Impeccable, not this fork.
+
+Clone the fork, copy the skill folder for your coding tool into your project, and remove any other copy of Impeccable that your agent loads:
 
 ```bash
-npx impeccable install
+git clone https://github.com/caparsons0220/Congo-x-Impeccable.git
+mkdir -p your-project/.agents/skills
+cp -R Congo-x-Impeccable/.agents/skills/impeccable your-project/.agents/skills/
 ```
 
-Reload your coding tool, then run `/impeccable init` in your agent (`$impeccable init` on Codex).
+Use `.claude`, `.cursor`, or the matching harness folder from the [manual installation table](#manual-copy-no-node-required) when installing for another tool. Reload your tool, then run `/impeccable init` (`$impeccable init` on Codex).
 
-Works with Claude Code, Cursor, Codex CLI, GitHub Copilot, Devin, Replit Agent, Gemini CLI, Grok Build, OpenCode, Google Antigravity, Kiro, Trae, Rovo Dev, Qoder, Mistral Vibe, Pi, Hermes Agent, DeepSeek Harness, and Veto. Full docs live at [impeccable.style/docs](https://impeccable.style/docs).
-
-| Without Impeccable | With Impeccable |
-|---|---|
-| ![Villa Castagneto built without Impeccable: cream background, a thin serif headline with an italic accent, two pill buttons, and flat vector illustrations in rounded cards](https://github.com/pbakaus/impeccable/raw/main/docs/images/readme-without.webp) | ![Villa Castagneto built with Impeccable: a full-bleed engraved night scene of the villa on its cliff above the sea, a condensed cream and vermilion headline, and a month strip along the bottom](https://github.com/pbakaus/impeccable/raw/main/docs/images/readme-with.webp) |
-
-Same model (Fable 5.1), same brief: a fourteen-room family guesthouse on the Ligurian coast. Without Impeccable, it builds the tasteful default: cream page, thin serif, italic accent, pill buttons. With it, the page is built around one picture: the house at night, seen from the water.
-
-For a full project, see the [Neo Mirai case study](https://impeccable.style/cases/neo-mirai): a conference site taken from mockup to shipped page.
-
-## Congo X Impeccable
-
-Impeccable works here exactly as it does upstream. This fork adds one thing: your agent can reach into [Congo](https://buildwithcongo.com), a library of real app screens, full app templates and design handbooks that ship with working React source.
-
-Ask for a billing settings page and the agent can put real billing screens from Congo on Impeccable's decision page, install the one you pick, and adapt it to your DESIGN.md through Impeccable's usual passes. Congo also feeds planning, live-mode alternatives, direct edits, critique comparisons and design handbooks. There is no new command to learn; the agent uses Congo when real source helps. The instructions live in [skill/reference/congo.md](skill/reference/congo.md).
-
-- Browsing, screenshots and previews are free. Installing source needs a Congo subscription.
-- It uses the [Congo CLI](https://www.npmjs.com/package/@buildwithcongo/cli) (`npm install --global @buildwithcongo/cli`, Node 22.20 or later) or Congo's MCP server. You sign in yourself with `congo login` in your browser; the agent never handles your sign-in.
-- Without Congo, a Congo account or a subscription, this is plain Impeccable.
-
-To install the fork, copy `.claude/skills/impeccable/` from this repository into your project's `.claude/skills/` (or the matching folder for your agent, such as `.cursor/skills/` or `.agents/skills/`), and remove any other copy of Impeccable your agent loads. `npx impeccable install` installs the original Impeccable, not this fork.
+Congo uses the [Congo CLI](https://www.npmjs.com/package/@buildwithcongo/cli) (`npm install --global @buildwithcongo/cli`, Node 22.20 or later) or Congo's MCP server. Browsing screenshots and previews is free; installing source requires a Congo subscription. Sign in yourself with `congo login` in your browser; the agent never handles your sign-in.
 
 Impeccable is by [Paul Bakaus](https://www.paulbakaus.com) and contributors, under Apache 2.0. This fork is not affiliated with or endorsed by the Impeccable project, so report problems with the Congo part here rather than on Impeccable's issue tracker. [NOTICE.md](NOTICE.md) lists the files the fork changes.
 
@@ -107,11 +116,13 @@ Exit code `2` means findings, `1` means a target couldn't be scanned. To allow y
 
 **In your browser.** The [Chrome extension](https://chromewebstore.google.com/detail/impeccable/bdkgmiklpdmaojlpflclinlofgjfpabf) overlays the same findings on any live page, yours or anyone else's. [Review with a visual overlay](https://impeccable.style/tutorials/critique-with-overlay).
 
-## Installation
+## Upstream Impeccable installation
 
 ```bash
 npx impeccable install
 ```
+
+These commands install upstream Impeccable. Use the [fork installation steps](#install-the-fork) above to add Congo.
 
 The installer detects your coding tools, asks whether to install for this project or globally, and offers the design hook where your tool supports one. Accept the hook. Reload your tool afterward. `npx impeccable update` refreshes an existing install. For scripts, pass `--providers=claude,codex,cursor` and `--scope=project|global`.
 

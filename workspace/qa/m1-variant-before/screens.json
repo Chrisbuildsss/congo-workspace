@@ -1,0 +1,98 @@
+[
+  {
+    "route": "/community",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m1-variant-before\\community-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m1-variant-before\\projects-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/chat/chat-editorial",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m1-variant-before\\chat-chat-editorial-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/community",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m1-variant-before\\community-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m1-variant-before\\projects-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/chat/chat-editorial",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m1-variant-before\\chat-chat-editorial-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/community",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m1-variant-before\\community-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m1-variant-before\\projects-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/chat/chat-editorial",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m1-variant-before\\chat-chat-editorial-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/community",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m1-variant-before\\community-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m1-variant-before\\projects-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/chat/chat-editorial",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m1-variant-before\\chat-chat-editorial-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  }
+]

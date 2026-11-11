@@ -356,7 +356,7 @@ export function readSourceFiles(rootDir) {
       allowedTools: '', userInvocable: true, argumentHint: fm['argument-hint'] || '', context: null,
       body: redesignBody, filePath: redesignFile, agents: [], payloads: {},
       references: fs.existsSync(refDir) ? fs.readdirSync(refDir).filter(n => n.endsWith('.md')).map(n => ({name:path.basename(n,'.md'),content:fs.readFileSync(path.join(refDir,n),'utf8'),filePath:path.join(refDir,n)})) : [],
-      scripts: readSkillScripts(path.join(redesignDir, 'scripts')) });
+      scripts: fs.existsSync(path.join(redesignDir, 'scripts')) ? readSkillScripts(path.join(redesignDir, 'scripts')) : [] });
   }
   return { skills };
 }

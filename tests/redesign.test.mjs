@@ -6,14 +6,18 @@ import {fileURLToPath} from 'node:url';
 import {readSourceFiles,replacePlaceholders} from '../scripts/lib/utils.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
 test('Redesign is a separate distributable skill and retains existing command suggestions',()=>{
-  const {skills}=readSourceFiles(root);const redesign=skills.find(s=>s.name==='redesign');assert.ok(redesign);assert.ok(redesign.scripts.some(s=>s.name==='workspace.mjs'));
+  const {skills}=readSourceFiles(root);const redesign=skills.find(s=>s.name==='redesign');assert.ok(redesign);
   const suggestions=replacePlaceholders('{{available_commands}}','codex',['impeccable','redesign'],['impeccable','redesign']);
   assert.match(suggestions,/impeccable critique/);assert.match(suggestions,/impeccable polish/);assert.match(suggestions,/redesign/);
 });
-test('generated required providers ship both skills with resolved commands',()=>{
+test('generated required providers ship both skills with resolved placeholders',()=>{
   for(const [provider,dir] of [['agents','.agents'],['codex','.codex'],['cursor','.cursor'],['claude-code','.claude']]){
     const base=path.join(root,'dist',provider,dir,'skills');if(!fs.existsSync(base))continue;
-    const skill=fs.readFileSync(path.join(base,'redesign','SKILL.md'),'utf8');assert.ok(fs.existsSync(path.join(base,'impeccable','SKILL.md')));assert.ok(!skill.includes('{{'));assert.match(skill,/--view choices/);
-    assert.ok(fs.existsSync(path.join(base,'redesign','scripts','workspace.mjs')));
+    const skill=fs.readFileSync(path.join(base,'redesign','SKILL.md'),'utf8');assert.ok(fs.existsSync(path.join(base,'impeccable','SKILL.md')));assert.ok(!skill.includes('{{'));
   }
+});
+test('the engine is unchanged from the upstream-pinned source',()=>{
+  // The workspace lives outside crates/; the installer downloads the original engine.
+  assert.ok(!fs.existsSync(path.join(root,'crates','live','src','workspace')));
+  assert.ok(!fs.existsSync(path.join(root,'crates','context','src','workspace_bridge.rs')));
 });

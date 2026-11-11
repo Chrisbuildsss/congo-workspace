@@ -93,4 +93,4 @@ Then adapt it before calling it done:
 
 ## Local workspace
 
-`congo workspace` opens the installed local shell without starting design work. Redesign is a separate skill and opens Choices directly. The workspace private working area may retain authorized candidate packages, previews and dependencies for reuse; keep paid source outside `.impeccable/`, public artifacts and this repository. Retrieval still uses Congo's existing authorization. Preserve each source pin, receipt and notice when accepting an adaptation.
+`congo workspace` opens the local Congo workspace without starting design work. Redesign is a separate skill and opens the workspace on Compose. The workspace private working area may retain authorized candidate packages, previews and dependencies for reuse; keep paid source outside `.impeccable/`, public artifacts and this repository. Retrieval still uses Congo's existing authorization. Preserve each source pin, receipt and notice when accepting an adaptation.

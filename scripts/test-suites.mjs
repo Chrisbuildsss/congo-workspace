@@ -96,7 +96,6 @@ export const SUITES = {
           'tests/readme-gitignore.test.mjs',
           'tests/test-suites.test.mjs',
           'tests/redesign.test.mjs',
-          'tests/workspace.test.mjs',
         ],
       },
     ],

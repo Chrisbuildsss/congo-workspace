@@ -17,7 +17,7 @@ Core principles:
 - Scale ambition to the surface's mode (see Modes). Persuade and Experience get full commitment: bold, distinct work with a point of view. On Operate and Read, ambition shows as precision and restraint, and patterns the visitor already knows earn their place.
 - Verify by looking at the rendered result at the sizes it ships at, and batch the checks: fix what one look shows before looking again, rather than screenshotting after every tweak.
 
-For screen/app redesign requests and working alternatives, use the separately installed `{{command_prefix}}redesign` skill before Setup. It opens Choices directly without an element selection or completed context files. Ordinary spot edits and the commands below keep their existing workflows.
+For screen/app redesign requests and working alternatives, use the separately installed `{{command_prefix}}redesign` skill before Setup. It opens the local Congo workspace on Compose without an element selection or completed context files. Ordinary spot edits and the commands below keep their existing workflows.
 
 ## Setup
 
@@ -76,7 +76,6 @@ Choose the mode from the requested surface, not the product, and persist it only
 | `generate [n] [action] [element]` | Iterate | Variants, versions, or alternatives of a named element to choose from in the live browser; no manual picking | [reference/generate.md](reference/generate.md) |
 
 Routing: <!-- rule:skill-routing -->
-
 
 - **No argument:** read [routing.md](reference/routing.md) and present its context-aware menu; never auto-run a command.
 - **Explicit or clearly implied request to run a command:** load its reference (native variant on native platforms) and follow it. Ask once if two commands fit.

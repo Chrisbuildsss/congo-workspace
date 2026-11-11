@@ -159,6 +159,8 @@ export default function LibraryView({
   onBack,
   onOpenItem,
   onAction,
+  onSave,
+  saved,
 }: {
   mode: LibraryMode;
   appSlug?: string;
@@ -168,6 +170,8 @@ export default function LibraryView({
   onBack: () => void;
   onOpenItem: (design: Design, context?: string) => void;
   onAction: (action: CardAction, design: Design) => void;
+  onSave: (design: Design) => void;
+  saved: Set<string>;
 }) {
   const [apps, setApps] = useState<LibraryApp[] | null>(null);
   const [categories, setCategories] = useState<ScreenCategory[]>([]);
@@ -324,6 +328,8 @@ export default function LibraryView({
                   actionsDisabledNote={actionsNote}
                   menuItems={MENU}
                   showSelect={false}
+                  onBookmark={() => onSave(design)}
+                  bookmarked={saved.has(design.id)}
                 />
               );
             })
@@ -339,6 +345,8 @@ export default function LibraryView({
                   actionsDisabledNote={actionsNote}
                   menuItems={MENU}
                   showSelect={false}
+                  onBookmark={() => onSave(design)}
+                  bookmarked={saved.has(design.id)}
                 />
               );
             })}

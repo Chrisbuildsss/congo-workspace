@@ -13,6 +13,8 @@ import DesignDetail from "./views/DesignDetail";
 import LibraryView, { type LibraryMode } from "./views/Library";
 import LiveAppView from "./views/LiveApp";
 import ProjectsView from "./views/Projects";
+import ProjectDetail from "./views/ProjectDetail";
+import SavePopover from "./components/SavePopover";
 
 type Route =
   | { name: "compose"; id?: string }
@@ -86,6 +88,7 @@ export default function App() {
   const [detail, setDetail] = useState<{ design: Design; context?: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [saveFor, setSaveFor] = useState<Design | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const stopped = useRef(false);
   const hasToken = Boolean(token());
@@ -167,6 +170,35 @@ export default function App() {
   const designsFor = (ids: string[]) =>
     ids.map((id) => state?.designs[id]).filter((d): d is Design => Boolean(d));
   const bookmarked = new Set(state?.projects.flatMap((p) => p.designIds) ?? []);
+  const activeProject =
+    route.name === "projects" && route.id && state ? state.projects.find((p) => p.id === route.id) ?? null : null;
+
+  /** Project changes return the new state; `withState` handles both response shapes. */
+  const projectCall = async (path: string, body: Record<string, unknown>, nested = true) => {
+    try {
+      const result = await api<{ state?: WorkspaceState } & WorkspaceState>(path, body);
+      setState(nested && result.state ? result.state : (result as WorkspaceState));
+      return true;
+    } catch (error) {
+      showToast((error as Error).message);
+      return false;
+    }
+  };
+
+  const saveDesign = async (target: { projectId?: string; newProjectName?: string; appId?: string | null }) => {
+    if (!saveFor) return;
+    try {
+      const result = await api<{ project: { name: string }; state: WorkspaceState }>("/api/projects/save", {
+        ...target,
+        design: saveFor,
+      });
+      setState(result.state);
+      setSaveFor(null);
+      showToast(`Saved to ${result.project.name}`);
+    } catch (error) {
+      showToast((error as Error).message);
+    }
+  };
 
   const setTheme = async (theme: ThemeSetting) => {
     applyTheme(theme);
@@ -318,16 +350,48 @@ export default function App() {
               onOpenApp={(slug) => navigate({ name: "library", mode: "apps", app: slug })}
               onBack={() => navigate({ name: "library", mode: "apps" })}
               onOpenItem={(design, context) => setDetail({ design, context })}
+              onSave={setSaveFor}
+              saved={bookmarked}
               onAction={handleCardAction}
             />
           ) : null}
 
-          {route.name === "projects" && state ? (
+          {route.name === "projects" && !route.id && state ? (
             <ProjectsView
               projects={state.projects}
               designs={state.designs}
+              apps={state.apps}
               onOpenProject={(project) => navigate({ name: "projects", id: project.id })}
             />
+          ) : null}
+
+          {route.name === "projects" && route.id && state ? (
+            activeProject ? (
+              <ProjectDetail
+                key={activeProject.id}
+                project={activeProject}
+                designs={designsFor(activeProject.designIds)}
+                apps={state.apps}
+                aiConnected={aiConnected}
+                onBack={() => navigate({ name: "projects" })}
+                onRename={(name) => void projectCall("/api/projects/update", { id: activeProject.id, name })}
+                onDelete={async () => {
+                  if (await projectCall("/api/projects/delete", { id: activeProject.id }, false)) {
+                    navigate({ name: "projects" });
+                    showToast("Project deleted");
+                  }
+                }}
+                onOpenDesign={(design) => setDetail({ design, context: activeProject.name })}
+                onAction={handleCardAction}
+                onRemove={(design) => {
+                  void projectCall("/api/projects/remove", { projectId: activeProject.id, designId: design.id }, false).then(
+                    (ok) => ok && showToast(`Removed from ${activeProject.name}`),
+                  );
+                }}
+              />
+            ) : (
+              <div className="library-error">That project no longer exists.</div>
+            )
           ) : null}
 
           {route.name === "live" ? <LiveAppView status={status} /> : null}
@@ -354,7 +418,7 @@ export default function App() {
                 navigate({ name: "projects" });
                 showToast("Compose deleted");
               }}
-              onBookmark={() => showToast("Saving to Projects arrives with Projects")}
+              onBookmark={setSaveFor}
               bookmarked={bookmarked}
               selected={selected}
               onToggleSelected={toggleSelected}
@@ -399,8 +463,19 @@ export default function App() {
               (detail.design.local ? designUrl(detail.design, status?.contentOrigin ?? "") : null)
             }
             onClose={() => setDetail(null)}
-            onBookmark={() => showToast("Saving to Projects arrives with Projects")}
+            onBookmark={() => setSaveFor(detail?.design ?? null)}
             onEdit={detail.design.src ? () => showToast("Editing arrives with the Edit step") : undefined}
+          />
+        ) : null}
+
+        {saveFor && state ? (
+          <SavePopover
+            design={saveFor}
+            projects={state.projects}
+            apps={state.apps}
+            defaultAppId={saveFor.appId ?? activeCompose?.appId ?? state.activeAppId}
+            onSave={(target) => void saveDesign(target)}
+            onClose={() => setSaveFor(null)}
           />
         ) : null}
 

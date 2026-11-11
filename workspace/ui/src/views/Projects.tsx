@@ -1,6 +1,6 @@
 import { Topbar } from "../components/AppShell";
 import DesignFrame from "../DesignFrame";
-import type { Design, Project } from "../types";
+import type { AppRef, Design, Project } from "../types";
 
 function ProjectPreview({ designs }: { designs: Design[] }) {
   const panes = designs.slice(-2);
@@ -21,10 +21,12 @@ function ProjectPreview({ designs }: { designs: Design[] }) {
 export default function ProjectsView({
   projects,
   designs,
+  apps = [],
   onOpenProject,
 }: {
   projects: Project[];
   designs: Record<string, Design>;
+  apps?: AppRef[];
   onOpenProject: (project: Project) => void;
 }) {
   return (
@@ -48,7 +50,12 @@ export default function ProjectsView({
             <ProjectPreview
               designs={project.designIds.map((id) => designs[id]).filter((d): d is Design => Boolean(d))}
             />
-            <span>{project.name}</span>
+            <span>
+              {project.name}
+              {apps.find((a) => a.id === project.appId) ? (
+                <small className="project-card-app"> · {apps.find((a) => a.id === project.appId)!.name}</small>
+              ) : null}
+            </span>
           </div>
         ))}
         {projects.length === 0

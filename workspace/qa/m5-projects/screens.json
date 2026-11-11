@@ -1,0 +1,90 @@
+[
+  {
+    "route": "/projects",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m5-projects\\projects-390-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects/c9210a7c",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m5-projects\\projects-c9210a7c-390-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m5-projects\\projects-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects/c9210a7c",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m5-projects\\projects-c9210a7c-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m5-projects\\projects-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects/c9210a7c",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m5-projects\\projects-c9210a7c-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m5-projects\\projects-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/projects/c9210a7c",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m5-projects\\projects-c9210a7c-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  }
+]

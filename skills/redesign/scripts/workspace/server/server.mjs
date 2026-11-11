@@ -502,6 +502,93 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         const created = await createRequest(body);
         return send(res, 200, { ...created, state: publicState() });
       }
+      case '/api/projects': {
+        const name = String(body.name ?? '').trim().slice(0, 80);
+        if (!name) return send(res, 400, { error: 'Name the project' });
+        const project = store.update((s) => {
+          const appId = s.apps.some((a) => a.id === body.appId) ? body.appId : null;
+          const created = { id: newId(), name, designIds: [], appId, createdAt: new Date().toISOString() };
+          s.projects.unshift(created);
+          return created;
+        });
+        return send(res, 200, { project, state: publicState() });
+      }
+      case '/api/projects/update': {
+        const name = String(body.name ?? '').trim().slice(0, 80);
+        const found = store.update((s) => {
+          const project = s.projects.find((p) => p.id === body.id);
+          if (!project) return null;
+          if (name) project.name = name;
+          if (body.appId === null || s.apps.some((a) => a.id === body.appId)) project.appId = body.appId;
+          return project;
+        });
+        if (!found) return send(res, 404, { error: 'Project not found' });
+        return send(res, 200, { project: found, state: publicState() });
+      }
+      case '/api/projects/delete': {
+        // Removes the project and its grouping. Designs stay where else they
+        // live (their compose); library copies only this project held are dropped.
+        store.update((s) => {
+          const project = s.projects.find((p) => p.id === body.id);
+          if (!project) return;
+          s.projects = s.projects.filter((p) => p.id !== body.id);
+          const elsewhere = new Set([...s.projects.flatMap((p) => p.designIds), ...s.composes.flatMap((c) => c.designIds)]);
+          for (const id of project.designIds) {
+            if (!elsewhere.has(id) && s.designs[id] && !s.designs[id].local) delete s.designs[id];
+          }
+        });
+        return send(res, 200, publicState());
+      }
+      case '/api/projects/save': {
+        // Save a design (Compose card or Library item) into a project,
+        // creating the project when a new name is given.
+        const incoming = body.design ?? {};
+        const known = store.get().designs[incoming.id];
+        if (!known && !(typeof incoming.id === 'string' && /^(screen|app):/.test(incoming.id))) {
+          return send(res, 404, { error: 'Design not found' });
+        }
+        const result = store.update((s) => {
+          let project = s.projects.find((p) => p.id === body.projectId);
+          if (!project) {
+            const name = String(body.newProjectName ?? '').trim().slice(0, 80);
+            if (!name) return null;
+            const appId = s.apps.some((a) => a.id === body.appId) ? body.appId : null;
+            project = { id: newId(), name, designIds: [], appId, createdAt: new Date().toISOString() };
+            s.projects.unshift(project);
+          }
+          if (!s.designs[incoming.id]) {
+            // A library item: keep what the card shows, never source.
+            s.designs[incoming.id] = {
+              id: incoming.id,
+              local: false,
+              title: String(incoming.title ?? incoming.id).slice(0, 120),
+              author: typeof incoming.author === 'string' ? incoming.author.slice(0, 120) : undefined,
+              format: incoming.format === 'mobile' ? 'mobile' : 'desktop',
+              image: typeof incoming.image === 'string' && /^https:\/\//.test(incoming.image) ? incoming.image : undefined,
+              previewUrl: typeof incoming.previewUrl === 'string' && /^https:\/\//.test(incoming.previewUrl) ? incoming.previewUrl : null,
+              source: incoming.source && typeof incoming.source.id === 'string'
+                ? { kind: incoming.source.kind, id: incoming.source.id.slice(0, 200), version: incoming.source.version, app: incoming.source.app }
+                : undefined,
+              createdAt: new Date().toISOString(),
+            };
+          }
+          if (!project.designIds.includes(incoming.id)) project.designIds.push(incoming.id);
+          return project;
+        });
+        if (!result) return send(res, 400, { error: 'Choose a project or name a new one' });
+        return send(res, 200, { project: result, state: publicState() });
+      }
+      case '/api/projects/remove': {
+        store.update((s) => {
+          const project = s.projects.find((p) => p.id === body.projectId);
+          if (!project) return;
+          project.designIds = project.designIds.filter((id) => id !== body.designId);
+          const elsewhere = new Set([...s.projects.flatMap((p) => p.designIds), ...s.composes.flatMap((c) => c.designIds)]);
+          const design = s.designs[body.designId];
+          if (design && !design.local && !elsewhere.has(design.id)) delete s.designs[design.id];
+        });
+        return send(res, 200, publicState());
+      }
       case '/api/designs/delete': {
         const design = store.get().designs[body.id];
         if (!design) return send(res, 404, { error: 'Design not found' });

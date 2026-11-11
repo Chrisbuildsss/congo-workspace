@@ -111,6 +111,57 @@ test('attaching an app needs a real folder', async () => {
   assert.equal((await api('/api/status')).value.app.name, 'my-app');
 });
 
+test('projects: save designs and library items, rename, remove, delete, and keep them on disk', async () => {
+  const appB = path.join(tmp, 'app-b');
+  fs.mkdirSync(appB);
+  fs.writeFileSync(path.join(appB, 'package.json'), JSON.stringify({ name: 'app-b' }));
+  const b = (await api('/api/apps', { path: appB })).value.app;
+  const local = path.join(tmp, 'home', 'area', 'designs', 'p1-1');
+  fs.mkdirSync(local, { recursive: true });
+  fs.writeFileSync(path.join(local, 'index.html'), '<h1>p</h1>');
+  fs.writeFileSync(path.join(local, 'design.json'), JSON.stringify({ title: 'Local design' }));
+  const state = await (async () => {
+    for (let i = 0; i < 50; i++) {
+      const s = (await api('/api/state')).value;
+      if (s.designs['p1-1']) return s;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error('design not registered');
+  })();
+  assert.equal(state.designs['p1-1'].local, true);
+
+  assert.equal((await api('/api/projects/save', { design: { id: 'nope' }, newProjectName: 'X' })).status, 404);
+  assert.equal((await api('/api/projects/save', { design: { id: 'p1-1' } })).status, 400, 'needs a project');
+  const saved = (await api('/api/projects/save', { design: { id: 'p1-1' }, newProjectName: 'My app ideas' })).value;
+  const projectA = saved.project.id;
+  const lib = {
+    id: 'screen:s1', title: 'Settings', author: 'Ghosted', format: 'desktop',
+    image: 'https://buildwithcongo.com/a.png', previewUrl: 'javascript:alert(1)',
+    source: { kind: 'screen', id: 's1', version: 'v1', app: 'ghosted' },
+  };
+  const savedB = (await api('/api/projects/save', { design: lib, newProjectName: 'B ideas', appId: b.id })).value;
+  const projectB = savedB.project.id;
+  assert.equal(savedB.state.designs['screen:s1'].previewUrl, null, 'only https links are kept');
+  assert.equal(savedB.state.designs['screen:s1'].local, false);
+  assert.equal(savedB.state.projects.find((p) => p.id === projectB).appId, b.id);
+
+  // Saving twice does not duplicate; rename persists.
+  await api('/api/projects/save', { design: { id: 'p1-1' }, projectId: projectA });
+  await api('/api/projects/update', { id: projectA, name: 'Renamed' });
+  let disk = JSON.parse(fs.readFileSync(path.join(tmp, 'home', 'state.json'), 'utf8'));
+  assert.deepEqual(disk.projects.find((p) => p.id === projectA).designIds, ['p1-1']);
+  assert.equal(disk.projects.find((p) => p.id === projectA).name, 'Renamed');
+
+  // Removing the only reference to a library copy drops it; local designs stay.
+  await api('/api/projects/remove', { projectId: projectB, designId: 'screen:s1' });
+  await api('/api/projects/delete', { id: projectA });
+  disk = JSON.parse(fs.readFileSync(path.join(tmp, 'home', 'state.json'), 'utf8'));
+  assert.equal(disk.designs['screen:s1'], undefined);
+  assert.ok(disk.designs['p1-1'], 'local designs outlive a deleted project');
+  assert.ok(fs.existsSync(path.join(local, 'index.html')));
+  assert.deepEqual(disk.projects.map((p) => p.name), ['B ideas']);
+});
+
 test('the launcher opens one workspace, reuses it, reports status and stops it', () => {
   const env = launcherEnv();
   const first = JSON.parse(execFileSync(process.execPath, [launcher, 'open', '--no-browser', '--json', '--port', '4990'], { env, encoding: 'utf8' }));

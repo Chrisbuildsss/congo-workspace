@@ -90,3 +90,7 @@ Then adapt it before calling it done:
 - Never write Congo source into `.impeccable/`, Impeccable's caches, or any public place; it lives only where the user installed it.
 - Searching, opening screenshots and showing options need no permission. Scratch installs for the reference round are announced in one line first (step 2 above). Source goes into the user's project only for the app or screen they picked.
 - Without Congo, Impeccable works exactly as before. Never block, retry in a loop, or keep reminding the user about it.
+
+## Local workspace
+
+`congo workspace` opens the local Congo workspace without starting design work. Redesign is a separate skill and opens the workspace on Compose. The workspace private working area may retain authorized candidate packages, previews and dependencies for reuse; keep paid source outside `.impeccable/`, public artifacts and this repository. Retrieval still uses Congo's existing authorization. Preserve each source pin, receipt and notice when accepting an adaptation.

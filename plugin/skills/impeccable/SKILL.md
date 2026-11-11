@@ -14,6 +14,8 @@ Core principles:
 - Scale ambition to the surface's mode (see Modes). Persuade and Experience get full commitment: bold, distinct work with a point of view. On Operate and Read, ambition shows as precision and restraint, and patterns the visitor already knows earn their place.
 - Verify by looking at the rendered result at the sizes it ships at, and batch the checks: fix what one look shows before looking again, rather than screenshotting after every tweak.
 
+For screen/app redesign requests and working alternatives, use the separately installed `/congo` skill before Setup. It opens the local Congo workspace on Compose without an element selection or completed context files. Ordinary spot edits and the commands below keep their existing workflows.
+
 ## Setup
 
 1. Run `"${CLAUDE_SKILL_DIR}/scripts/impeccable" context` once per session, where `${CLAUDE_SKILL_DIR}` is the directory that contains this SKILL.md (the skill folder, not a plugin root two levels above it); keep cwd at the user's project. Every `"${CLAUDE_SKILL_DIR}/scripts/impeccable" <verb>` command in this skill and its references resolves against that base directory. In reference files, replace the skill-base-dir placeholder with this directory before running commands; it is not a shell variable. On a Windows shell without `sh`, call `& "${CLAUDE_SKILL_DIR}/scripts/impeccable.cmd"` instead. The launcher runs a self-contained binary that ships next to it or is downloaded once on first run; no Node or other runtime is required. Pass a named source file or route as `--target <path>`. It loads PRODUCT.md, DESIGN.md, the matching surface brief, and native-platform guidance when applicable; follow its directives and do not rerun it.

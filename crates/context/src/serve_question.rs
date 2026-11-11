@@ -1313,6 +1313,7 @@ pub fn run(argv: &[String], io: &mut Io) -> i32 {
             io.err("serve-question: --wait needs --key\n");
             return 1;
         };
+        let _workspace_wait = crate::workspace_bridge::Wait::for_question(&qdir, &key);
         let poll_sec = js_number_arg(&a, "poll", "60");
         let deadline = now_ms() + poll_sec * 1000.0;
         let answered = || exists(&answer_file(&qdir, &key));
@@ -1556,7 +1557,12 @@ pub fn run(argv: &[String], io: &mut Io) -> i32 {
             }
             // JS: spawn(..., { detached: true }) + child.unref()
             impeccable_common::proc::detach(&mut cmd);
-            cmd.spawn()
+            #[cfg(windows)]
+            if a.arg("workspace").is_some() {
+                crate::workspace_bridge::spawn_question(&exe, &cwd, &child_args, &log_file)
+            } else { cmd.spawn().map(|_| ()) }
+            #[cfg(not(windows))]
+            cmd.spawn().map(|_| ())
         };
         let _ = spawned; // detached: never waited on
         let Some(daemon_url) = wait_for_daemon_url(&qdir, &key, now_ms() + 8000.0) else {
@@ -1577,6 +1583,11 @@ pub fn run(argv: &[String], io: &mut Io) -> i32 {
         }
         if let Some(notice) = tracked_runtime_notice(&cwd) {
             io.out(&notice);
+        }
+        if let Some(host) = a.arg("workspace") {
+            if let Err(error) = crate::workspace_bridge::attach(&host, &daemon_url, &qdir, &key) {
+                io.err(&format!("Workspace attachment: {error}. The native Choices URL below remains available.\n"));
+            }
         }
         io.out(&format!("QUESTION URL: {}\n", daemon_url));
         io.out(&format!("QUESTION KEY: {}\n", key));
@@ -2079,6 +2090,13 @@ pub fn open_system_browser(url: &str, env: &Env) -> bool {
     c.spawn().is_ok()
 }
 
+/// The projectless host uses the original page, with no invented empty-state UI.
+pub fn workspace_empty_page() -> String {
+    let mut state = ServerState::new(String::new(), String::new(), None, 600_000.0);
+    state.payload = json!({"title":"Choices", "question":"Ask your AI for working alternatives, or browse Congo alongside your app.", "steer":false});
+    state.page(false)
+}
+
 // ─── round state + page rendering ──────────────────────────────────────────
 
 struct ServerState {
@@ -2288,7 +2306,8 @@ impl ServerState {
         // a round without image generation. A comp, when one is the face, wins.
         let face_html = |o: &Value| -> Option<String> { if demoted(o) || face_comp(o).is_some() { None } else { str_of(o, "htmlSrc") } };
         let thumb_only = |o: &Value| face_comp(o).is_none() && face_html(o).is_none() && (has(o, "heroSrc") || has(o, "boardSrc")) && (demoted(o) || identity_round);
-        let has_media = |o: &Value| face_comp(o).is_some() || face_html(o).is_some() || ((has(o, "heroSrc") || has(o, "boardSrc")) && !thumb_only(o));
+        let preview = |o: &Value| o.get("previewUrl").and_then(Value::as_str).filter(|s| crate::workspace_bridge::local_url(s)).map(str::to_string);
+        let has_media = |o: &Value| preview(o).is_some() || face_comp(o).is_some() || face_html(o).is_some() || ((has(o, "heroSrc") || has(o, "boardSrc")) && !thumb_only(o));
         let has_back = |o: &Value| has_media(o) && (has(o, "viewport") || has(o, "case") || (has(o, "boardSrc") && has(o, "heroSrc")));
         let options = &self.options;
         let anatomy = |o: &Value| -> String {
@@ -2372,6 +2391,10 @@ impl ServerState {
             parts.iter().filter(|p| !p.is_empty()).cloned().collect::<Vec<_>>().join("\n            ")
         };
         let media = |o: &Value| -> String {
+            // An optional running preview uses the same original card and controls.
+            if let Some(src) = preview(o) {
+                return format!("<div class=\"media\"><iframe src=\"{}\" title=\"Interactive choice\" sandbox=\"allow-scripts allow-forms allow-same-origin allow-popups\" referrerpolicy=\"no-referrer\" style=\"display:block;width:100%;height:100%;border:0\"></iframe><div class=\"chips\"><a class=\"chip\" href=\"{}\" target=\"_blank\" rel=\"noopener noreferrer\">Open preview</a>{}</div></div>", esc_s(&src), esc_s(&src), if has_back(o) { flip_chip("Details") } else { String::new() });
+            }
             let inspiration_src = str_of(o, "heroSrc").or_else(|| str_of(o, "boardSrc"));
             let inspiration = match &inspiration_src {
                 Some(src) => format!("<figure class=\"pip\" title=\"Inspiration: the world this direction draws from. Your page will not look like this image.\">\n              <img src=\"{}\" alt=\"\">\n              <figcaption>inspiration</figcaption>\n            </figure>", esc_s(src)),
@@ -2601,6 +2624,20 @@ impl ServerState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn running_choices_extend_original_cards_only_for_local_preview_urls() {
+        let mut state = ServerState::new(String::new(), String::new(), None, 600_000.0);
+        state.load_round(&json!({"options":[{"id":"working","label":"Working choice","previewUrl":"http://127.0.0.1:5174/contacts?direction=one","viewport":"Contacts"}]}).to_string()).unwrap();
+        let html = state.page(false);
+        assert!(html.contains("title=\"Interactive choice\""));
+        assert!(html.contains("class=\"chip\""));
+        assert!(html.contains("Open preview"));
+        assert!(html.contains("class=\"choose\" data-id=\"working\""));
+        assert!(html.contains("aria-label=\"Impeccable\""));
+        state.load_round(&json!({"options":[{"id":"ordinary","label":"Ordinary card","previewUrl":"https://example.com/"}]}).to_string()).unwrap();
+        assert!(!state.page(false).contains("title=\"Interactive choice\""));
+    }
 
     #[test]
     fn question_page_uses_system_fonts_and_inline_branding() {

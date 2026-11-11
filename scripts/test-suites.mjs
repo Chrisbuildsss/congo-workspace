@@ -95,6 +95,8 @@ export const SUITES = {
           'tests/skill-behavior-harness.test.mjs',
           'tests/readme-gitignore.test.mjs',
           'tests/test-suites.test.mjs',
+          'tests/redesign.test.mjs',
+          'tests/workspace.test.mjs',
         ],
       },
     ],

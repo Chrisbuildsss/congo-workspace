@@ -346,6 +346,18 @@ export function readSourceFiles(rootDir) {
     payloads,
   });
 
+  const redesignDir = path.join(rootDir, 'skills', 'redesign');
+  const redesignFile = path.join(redesignDir, 'SKILL.src.md');
+  if (fs.existsSync(redesignFile)) {
+    const { frontmatter: fm, body: redesignBody } = parseFrontmatter(fs.readFileSync(redesignFile, 'utf8'));
+    const refDir = path.join(redesignDir, 'reference');
+    skills.push({ name: fm.name, description: fm.description, claudeCodeDescription: fm.description,
+      license: fm.license || '', compatibility: fm.compatibility || '', metadata: fm.metadata || null,
+      allowedTools: '', userInvocable: true, argumentHint: fm['argument-hint'] || '', context: null,
+      body: redesignBody, filePath: redesignFile, agents: [], payloads: {},
+      references: fs.existsSync(refDir) ? fs.readdirSync(refDir).filter(n => n.endsWith('.md')).map(n => ({name:path.basename(n,'.md'),content:fs.readFileSync(path.join(refDir,n),'utf8'),filePath:path.join(refDir,n)})) : [],
+      scripts: readSkillScripts(path.join(redesignDir, 'scripts')) });
+  }
   return { skills };
 }
 
@@ -692,11 +704,12 @@ export function replacePlaceholders(content, provider, commandNames = [], allSki
   // Otherwise fall back to listing skill names (backwards compat for forks).
   const nonExcluded = commandNames.filter(n => !EXCLUDED_FROM_SUGGESTIONS.has(n));
   let commandList;
-  if (nonExcluded.length === 0) {
+  if (nonExcluded.length === 0 || nonExcluded.every(n => n === 'redesign')) {
     // Single-skill architecture: list sub-commands as /impeccable <sub>
     commandList = IMPECCABLE_SUB_COMMANDS
       .map(n => `${cmdPrefix}impeccable ${n}`)
       .join(', ');
+    if (nonExcluded.includes('redesign')) commandList += `, ${cmdPrefix}redesign`;
   } else {
     // Multi-skill architecture (backwards compat)
     commandList = nonExcluded.map(n => `${cmdPrefix}${n}`).join(', ');

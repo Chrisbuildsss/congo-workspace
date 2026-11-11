@@ -10,29 +10,34 @@ import { api, getState, getStatus, token } from "./api";
 import type { Compose, Design, ThemeSetting, ViewName, WorkspaceState, WorkspaceStatus } from "./types";
 import ComposeView from "./views/Compose";
 import DesignDetail from "./views/DesignDetail";
-import LibraryView from "./views/Library";
+import LibraryView, { type LibraryMode } from "./views/Library";
 import LiveAppView from "./views/LiveApp";
 import ProjectsView from "./views/Projects";
 
 type Route =
   | { name: "compose"; id?: string }
-  | { name: "library" }
+  | { name: "library"; mode: LibraryMode; app?: string }
   | { name: "projects"; id?: string }
   | { name: "live" };
 
 function parseRoute(path: string): Route {
-  const [, first, second] = path.split("/");
+  const [, first, second, third] = path.split("/");
   if (first === "compose") return { name: "compose", id: second || undefined };
   if (first === "projects") return { name: "projects", id: second || undefined };
   if (first === "live") return { name: "live" };
-  return { name: "library" };
+  if (first === "library" && second === "screens") return { name: "library", mode: "screens" };
+  if (first === "library" && second === "apps" && third) {
+    return { name: "library", mode: "apps", app: decodeURIComponent(third) };
+  }
+  return { name: "library", mode: "apps" };
 }
 
 function routePath(route: Route) {
   if (route.name === "compose") return route.id ? `/compose/${route.id}` : "/compose";
   if (route.name === "projects") return route.id ? `/projects/${route.id}` : "/projects";
   if (route.name === "live") return "/live";
-  return "/library";
+  if (route.app) return `/library/apps/${encodeURIComponent(route.app)}`;
+  return route.mode === "screens" ? "/library/screens" : "/library";
 }
 
 function scrollTop() {
@@ -178,11 +183,16 @@ export default function App() {
   };
 
   const handleCardAction = (action: CardAction, design: Design) => {
-    if (action === "edit" || action === "other-views") {
-      setDetail({ design, context: activeCompose?.title });
+    if (action === "preview") {
+      if (design.previewUrl) window.open(design.previewUrl, "_blank", "noopener,noreferrer");
+      else showToast("No hosted preview for this item");
       return;
     }
-    showToast(aiConnected ? `${action.replaceAll("-", " ")} needs the Compose step` : "Actions need a connected AI");
+    if (action === "open" || action === "edit") {
+      setDetail({ design, context: activeCompose?.title ?? design.author });
+      return;
+    }
+    showToast(aiConnected ? "Sending actions to your AI arrives with Compose" : "Actions need a connected AI");
   };
 
   const toggleSelected = (design: Design) =>
@@ -215,7 +225,9 @@ export default function App() {
           expanded={sidebarExpanded}
           showMobileTrigger={!detail}
           onToggle={() => setSidebarExpanded((expanded) => !expanded)}
-          onNavigate={(name: ViewName) => navigate({ name } as Route)}
+          onNavigate={(name: ViewName) =>
+            navigate(name === "library" ? { name: "library", mode: "apps" } : ({ name } as Route))
+          }
           onCompose={() => void createCompose()}
           onTheme={(theme) => void setTheme(theme)}
           onOpenAbout={() => setAboutOpen(true)}
@@ -231,7 +243,18 @@ export default function App() {
             </div>
           ) : null}
 
-          {route.name === "library" ? <LibraryView /> : null}
+          {route.name === "library" ? (
+            <LibraryView
+              mode={route.mode}
+              appSlug={route.app}
+              aiConnected={aiConnected}
+              onMode={(mode) => navigate({ name: "library", mode })}
+              onOpenApp={(slug) => navigate({ name: "library", mode: "apps", app: slug })}
+              onBack={() => navigate({ name: "library", mode: "apps" })}
+              onOpenItem={(design, context) => setDetail({ design, context })}
+              onAction={handleCardAction}
+            />
+          ) : null}
 
           {route.name === "projects" && state ? (
             <ProjectsView
@@ -305,9 +328,10 @@ export default function App() {
             }
             bookmarked={bookmarked.has(detail.design.id)}
             editDisabledReason={aiConnected ? undefined : "Edit needs a connected AI"}
+            openUrl={detail.design.previewUrl ?? null}
             onClose={() => setDetail(null)}
             onBookmark={() => showToast("Saving to Projects arrives with Projects")}
-            onEdit={() => showToast("Editing arrives with the Edit step")}
+            onEdit={detail.design.src ? () => showToast("Editing arrives with the Edit step") : undefined}
           />
         ) : null}
 

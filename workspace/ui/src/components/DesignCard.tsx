@@ -1,102 +1,123 @@
-import { useState, type KeyboardEvent } from "react";
-import {
-  BookmarkIcon,
-  DownloadIcon,
-  EditIcon,
-  EllipsisIcon,
-  HeartIcon,
-  LinkIcon,
-  PencilIcon,
-  TrashIcon,
-} from "../Icons";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { BookmarkIcon, EllipsisIcon } from "../Icons";
 import type { Design } from "../types";
 import DesignFrame from "../DesignFrame";
 import { useClickOutside } from "./Ui";
 
+/**
+ * Card actions. Tweaks map onto Impeccable's commands:
+ * subtle -> an identity-preserving variation, layout -> `layout`,
+ * colorize -> `colorize`, bolder -> `bolder`, quieter -> `quieter`,
+ * more:<command> -> any of Impeccable's other visual and finishing commands.
+ */
 export type CardAction =
-  | "vary-strong"
-  | "vary-subtle"
-  | "change-style"
-  | "remix-colors"
-  | "shuffle-layout"
-  | "other-views"
+  | "use"
+  | "build"
+  | "subtle"
+  | "layout"
+  | "colorize"
+  | "bolder"
+  | "quieter"
   | "edit"
-  | "new-chat"
-  | "open-in"
-  | "export"
-  | "export-react"
-  | "new-tab"
+  | "open"
+  | "preview"
+  | "save"
   | "delete"
-  | "copy-code"
-  | "download"
-  | `open-in:${string}`
+  | `more:${string}`
   | `custom:${string}`;
 
-const openInTools = [
-  "Cursor",
-  "Claude Code",
-  "Codex",
-  "Antigravity",
-  "OpenCode",
-  "V0",
-  "Lovable",
-  "Replit",
+export interface QuickAction {
+  key: CardAction;
+  label: string;
+  icon: string;
+}
+
+export interface MenuItem {
+  key: CardAction;
+  label: string;
+  icon?: ReactNode;
+  danger?: boolean;
+}
+
+export const TWEAKS: QuickAction[] = [
+  { key: "subtle", label: "Subtle variant", icon: "⁘" },
+  { key: "layout", label: "Change layout", icon: "▦" },
+  { key: "colorize", label: "Recolor", icon: "◉" },
+  { key: "bolder", label: "Bolder", icon: "✣" },
+  { key: "quieter", label: "Quieter", icon: "╱" },
+];
+
+export const MORE_COMMANDS = [
+  "distill",
+  "typeset",
+  "animate",
+  "delight",
+  "overdrive",
+  "polish",
+  "clarify",
+  "adapt",
+  "harden",
+  "critique",
+  "audit",
 ];
 
 export default function DesignCard({
   design,
   onOpen,
   onAction,
-  onLike,
   onBookmark,
   selected,
   onToggleSelected,
-  liked = false,
   bookmarked = false,
+  primary,
+  tweaks = TWEAKS,
+  showMore = false,
+  actionsDisabledNote,
+  menuItems = [],
   showSelect = true,
   showAuthor = true,
   showTitle = true,
   showHoverActions = true,
-  showEllipsis = true,
-  showLike = false,
   compact = false,
   saved = false,
 }: {
   design: Design;
   onOpen: () => void;
   onAction: (action: CardAction, design: Design) => void;
-  onLike?: () => void;
   onBookmark?: () => void;
   selected?: boolean;
   onToggleSelected?: () => void;
-  liked?: boolean;
   bookmarked?: boolean;
+  /** Build this (Compose) or Use this (Library). */
+  primary?: QuickAction;
+  tweaks?: QuickAction[];
+  showMore?: boolean;
+  /** When set, actions show but are unavailable, with this short reason. */
+  actionsDisabledNote?: string;
+  menuItems?: MenuItem[];
   showSelect?: boolean;
   showAuthor?: boolean;
   showTitle?: boolean;
   showHoverActions?: boolean;
-  showEllipsis?: boolean;
-  showLike?: boolean;
   compact?: boolean;
   saved?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPanel, setMenuPanel] = useState<"open-in" | "export" | null>(null);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [custom, setCustom] = useState("");
-  const menuRef = useClickOutside<HTMLDivElement>(menuOpen, () => {
-    setMenuOpen(false);
-    setMenuPanel(null);
+  const menuRef = useClickOutside<HTMLDivElement>(menuOpen, () => setMenuOpen(false));
+  const quickRef = useClickOutside<HTMLDivElement>(quickOpen, () => {
+    setQuickOpen(false);
+    setMoreOpen(false);
   });
-  const quickRef = useClickOutside<HTMLDivElement>(quickOpen, () =>
-    setQuickOpen(false),
-  );
+  const disabled = Boolean(actionsDisabledNote);
 
   const activate = (action: CardAction) => {
     onAction(action, design);
     setMenuOpen(false);
-    setMenuPanel(null);
     setQuickOpen(false);
+    setMoreOpen(false);
   };
 
   const open = () => {
@@ -105,11 +126,14 @@ export default function DesignCard({
   };
 
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       open();
     }
   };
+
+  const quick = [...(primary ? [primary] : []), ...tweaks];
 
   return (
     <div
@@ -124,8 +148,12 @@ export default function DesignCard({
       onKeyDown={handleKey}
       onMouseEnter={() => showHoverActions && setQuickOpen(true)}
       onMouseLeave={() => {
-        if (!menuOpen) setQuickOpen(false);
+        if (!menuOpen) {
+          setQuickOpen(false);
+          setMoreOpen(false);
+        }
       }}
+      onFocus={() => showHoverActions && setQuickOpen(true)}
     >
       <DesignFrame design={design} />
 
@@ -153,7 +181,7 @@ export default function DesignCard({
       </div>
 
       <div className="card-top-actions">
-        {showEllipsis ? (
+        {menuItems.length > 0 ? (
           <div className="card-menu-wrap" ref={menuRef}>
             <button
               type="button"
@@ -162,198 +190,107 @@ export default function DesignCard({
               data-open={menuOpen || undefined}
               onClick={(event) => {
                 event.stopPropagation();
-                setMenuOpen((open) => {
-                  if (open) setMenuPanel(null);
-                  return !open;
-                });
+                setMenuOpen((value) => !value);
               }}
             >
               <EllipsisIcon />
             </button>
             {menuOpen ? (
-              <div
-                className="card-action-menu"
-                onClick={(event) => event.stopPropagation()}
-              >
+              <div className="card-action-menu" onClick={(event) => event.stopPropagation()}>
                 <ul>
-                  <li>
-                    <button type="button" onClick={() => activate("edit")}>
-                      <PencilIcon size={13} />
-                      Edit design
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" onClick={() => activate("new-chat")}>
-                      <span className="menu-glyph">↗</span>
-                      New chat from design
-                    </button>
-                  </li>
-                </ul>
-                <span className="menu-rule" />
-                <ul>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => setMenuPanel("open-in")}
-                      aria-haspopup="menu"
-                      aria-expanded={menuPanel === "open-in"}
-                    >
-                      <span className="menu-glyph">⌘</span>
-                      Open in...
-                      <em>Pro</em>
-                      <span className="menu-chevron">›</span>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => setMenuPanel("export")}
-                      aria-haspopup="menu"
-                      aria-expanded={menuPanel === "export"}
-                    >
-                      <DownloadIcon size={13} />
-                      Export...
-                      <em>Pro</em>
-                      <span className="menu-chevron">›</span>
-                    </button>
-                  </li>
-                  <li>
-                    <button type="button" onClick={() => activate("new-tab")}>
-                      <LinkIcon size={13} />
-                      Open in new tab
-                    </button>
-                  </li>
-                </ul>
-                <span className="menu-rule" />
-                <ul>
-                  <li>
-                    <button
-                      type="button"
-                      className="menu-danger"
-                      onClick={() => activate("delete")}
-                    >
-                      <TrashIcon size={13} />
-                      Delete design
-                    </button>
-                  </li>
-                </ul>
-                {menuPanel === "open-in" ? (
-                  <div className="card-submenu open-in-submenu" role="menu" aria-label="Open in">
-                    {openInTools.map((tool) => (
+                  {menuItems.map((item) => (
+                    <li key={item.key}>
                       <button
                         type="button"
-                        role="menuitem"
-                        key={tool}
-                        onClick={() => activate(`open-in:${tool}`)}
+                        className={item.danger ? "menu-danger" : undefined}
+                        onClick={() => activate(item.key)}
                       >
-                        {tool}
+                        {item.icon ?? <span className="menu-glyph">↗</span>}
+                        {item.label}
                       </button>
-                    ))}
-                    <span>Paste copied prompt into the selected app</span>
-                  </div>
-                ) : null}
-                {menuPanel === "export" ? (
-                  <div className="card-submenu export-submenu" role="menu" aria-label="Export">
-                    <button type="button" role="menuitem" onClick={() => activate("copy-code")}>
-                      Copy code
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => activate("download")}>
-                      Download HTML
-                    </button>
-                    <button type="button" role="menuitem" onClick={() => activate("export-react")}>
-                      Export as React
-                    </button>
-                  </div>
-                ) : null}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
           </div>
         ) : null}
-        <button
-          type="button"
-          className="card-icon-button"
-          aria-label="Save"
-          data-active={bookmarked || undefined}
-          onClick={(event) => {
-            event.stopPropagation();
-            onBookmark?.();
-          }}
-        >
-          <BookmarkIcon />
-        </button>
-        {!compact && showLike ? (
+        {onBookmark ? (
           <button
             type="button"
-            className="card-like-button"
-            aria-label="Like"
-            data-active={liked || undefined}
+            className="card-icon-button"
+            aria-label={bookmarked ? "Saved" : "Save"}
+            data-active={bookmarked || undefined}
             onClick={(event) => {
               event.stopPropagation();
-              onLike?.();
+              onBookmark();
             }}
           >
-            <HeartIcon filled={liked} />
-            <span>{liked ? 1 : 0}</span>
+            <BookmarkIcon />
           </button>
         ) : null}
       </div>
 
-      {showHoverActions ? (
+      {showHoverActions && quick.length > 0 ? (
         <div
           ref={quickRef}
           className="card-quick-actions"
           data-open={quickOpen || undefined}
           onClick={(event) => event.stopPropagation()}
         >
-          {[
-            ["vary-strong", "Vary strong", "✣"],
-            ["vary-subtle", "Vary subtle", "⁘"],
-            ["change-style", "Change style", "╱"],
-            ["remix-colors", "Remix colors", "◉"],
-            ["shuffle-layout", "Shuffle layout", "▦"],
-            ["other-views", "See other views", "⌘"],
-          ].map(([key, label, icon]) => (
-            <button
-              type="button"
-              key={key}
-              onClick={() => activate(key as CardAction)}
-            >
-              <span>{label}</span>
-              <i>{icon}</i>
+          {disabled ? <span className="card-quick-note">{actionsDisabledNote}</span> : null}
+          {moreOpen
+            ? MORE_COMMANDS.map((command) => (
+                <button
+                  type="button"
+                  key={command}
+                  disabled={disabled}
+                  onClick={() => activate(`more:${command}`)}
+                >
+                  <span>{command[0].toUpperCase() + command.slice(1)}</span>
+                  <i>›</i>
+                </button>
+              ))
+            : quick.map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  className={item === primary ? "is-primary" : undefined}
+                  disabled={disabled}
+                  onClick={() => activate(item.key)}
+                >
+                  <span>{item.label}</span>
+                  <i>{item.icon}</i>
+                </button>
+              ))}
+          {showMore ? (
+            <button type="button" disabled={disabled} onClick={() => setMoreOpen((value) => !value)}>
+              <span>{moreOpen ? "Back" : "More"}</span>
+              <i>{moreOpen ? "‹" : "…"}</i>
             </button>
-          ))}
-          <form
-            className="quick-vary-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (custom.trim()) {
-                activate(`custom:${custom.trim()}`);
-                setCustom("");
-              }
-            }}
-          >
-            <input
-              value={custom}
-              onChange={(event) => setCustom(event.target.value)}
-              placeholder="Vary…"
-            />
-          </form>
+          ) : null}
+          {!moreOpen ? (
+            <form
+              className="quick-vary-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (custom.trim() && !disabled) {
+                  activate(`custom:${custom.trim()}`);
+                  setCustom("");
+                }
+              }}
+            >
+              <input
+                value={custom}
+                disabled={disabled}
+                onChange={(event) => setCustom(event.target.value)}
+                placeholder="Vary…"
+                aria-label="Describe a variation"
+              />
+            </form>
+          ) : null}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-export function CardActionsBubble({
-  onAction,
-}: {
-  onAction: (action: CardAction) => void;
-}) {
-  return (
-    <div className="card-actions-bubble">
-      <button type="button" onClick={() => onAction("edit")}>
-        <EditIcon />
-      </button>
     </div>
   );
 }

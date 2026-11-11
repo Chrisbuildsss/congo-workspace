@@ -1,4 +1,4 @@
-import type { WorkspaceState, WorkspaceStatus } from "./types";
+import type { LibraryApp, LibraryScreen, ScreenCategory, WorkspaceState, WorkspaceStatus } from "./types";
 
 const TOKEN_KEY = "congo-workspace-token";
 
@@ -53,3 +53,13 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
 
 export const getStatus = () => api<WorkspaceStatus>("/api/status");
 export const getState = () => api<WorkspaceState>("/api/state");
+
+export const getLibraryApps = () => api<{ apps: LibraryApp[] }>("/api/library/apps");
+export const getScreenCategories = () => api<{ categories: ScreenCategory[] }>("/api/library/categories");
+export const getLibraryScreens = (query: { q?: string; app?: string; category?: string; offset?: number; limit?: number }) => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return api<{ items: LibraryScreen[]; total: number; offset: number }>(`/api/library/screens?${params}`);
+};

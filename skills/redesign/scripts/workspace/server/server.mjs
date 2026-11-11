@@ -8,6 +8,7 @@ import path from 'node:path';
 import { layout } from './paths.mjs';
 import { Store, THEMES, VIEWS, writeJsonAtomic } from './store.mjs';
 import { helperStatus } from './live.mjs';
+import { createCatalog } from './catalog.mjs';
 
 export const PROTOCOL = 1;
 export const VERSION = '0.1.0';
@@ -145,10 +146,11 @@ function appName(appPath) {
   return path.basename(appPath);
 }
 
-export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {} }) {
+export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl }) {
   const files = layout(root);
   for (const dir of [files.area, files.designs, files.requests, files.sources]) fs.mkdirSync(dir, { recursive: true });
   const store = new Store(files.state);
+  const catalog = createCatalog({ cacheDir: path.join(root, 'cache'), env, ...(fetchImpl ? { fetchImpl } : {}) });
   const secret = token || crypto.randomBytes(24).toString('base64url');
   let uiPort = 0;
   let servedContentPort = 0;
@@ -226,6 +228,11 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     }
     if (req.method === 'GET' && url.pathname === '/api/status') return send(res, 200, await status());
     if (req.method === 'GET' && url.pathname === '/api/state') return send(res, 200, publicState());
+    if (req.method === 'GET' && url.pathname === '/api/library/apps') return send(res, 200, await catalog.apps());
+    if (req.method === 'GET' && url.pathname === '/api/library/categories') return send(res, 200, await catalog.categories());
+    if (req.method === 'GET' && url.pathname === '/api/library/screens') {
+      return send(res, 200, await catalog.screens(Object.fromEntries(url.searchParams)));
+    }
     if (req.method !== 'POST') return send(res, 404, { error: 'Not found' });
     const body = await readBody(req);
     switch (url.pathname) {

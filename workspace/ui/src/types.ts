@@ -20,10 +20,49 @@ export interface Design {
   src?: string;
   /** Screenshot URL, for library items and previews. */
   image?: string;
+  /** Hosted original (library items); opens in a new tab. */
+  previewUrl?: string | null;
   parentId?: string;
   action?: string;
   source?: DesignSource;
   createdAt?: string;
+}
+
+export interface LibraryApp {
+  id: string;
+  slug: string;
+  name: string;
+  summary: string;
+  category: string | null;
+  pageCount: number | null;
+  access: string;
+  logo: string | null;
+  screenshot: string | null;
+  screenshots: string[];
+  preview: string | null;
+  inspiredBy: string | null;
+  url: string;
+  release: string | null;
+}
+
+export interface LibraryScreen {
+  id: string;
+  title: string;
+  route: string | null;
+  app: { id: string; slug: string; name: string } | null;
+  categories: string[];
+  screenshot: string | null;
+  format: "desktop" | "mobile";
+  preview: string | null;
+  url: string | null;
+  version: string | null;
+  source: { kind: "screen" | "template" | "app"; id: string; version?: string } | null;
+}
+
+export interface ScreenCategory {
+  id: string;
+  title: string;
+  group: string | null;
 }
 
 export interface ChatMessage {

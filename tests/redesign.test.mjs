@@ -7,6 +7,10 @@ import {readSourceFiles,replacePlaceholders} from '../scripts/lib/utils.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
 test('Redesign is a separate distributable skill and retains existing command suggestions',()=>{
   const {skills}=readSourceFiles(root);const redesign=skills.find(s=>s.name==='redesign');assert.ok(redesign);
+  assert.ok(redesign.scripts.some(s=>s.name==='workspace.mjs'));
+  assert.ok(redesign.scripts.some(s=>s.name==='workspace/ui/index.html'),'the workspace UI ships prebuilt');
+  assert.ok(redesign.scripts.some(s=>s.name==='workspace/server/server.mjs'));
+  for(const s of redesign.scripts.filter(s=>s.name.startsWith('workspace/ui/'))) assert.ok(/\.(html|js|css)$/.test(s.name),`text-only UI build: ${s.name}`);
   const suggestions=replacePlaceholders('{{available_commands}}','codex',['impeccable','redesign'],['impeccable','redesign']);
   assert.match(suggestions,/impeccable critique/);assert.match(suggestions,/impeccable polish/);assert.match(suggestions,/redesign/);
 });
@@ -14,6 +18,8 @@ test('generated required providers ship both skills with resolved placeholders',
   for(const [provider,dir] of [['agents','.agents'],['codex','.codex'],['cursor','.cursor'],['claude-code','.claude']]){
     const base=path.join(root,'dist',provider,dir,'skills');if(!fs.existsSync(base))continue;
     const skill=fs.readFileSync(path.join(base,'redesign','SKILL.md'),'utf8');assert.ok(fs.existsSync(path.join(base,'impeccable','SKILL.md')));assert.ok(!skill.includes('{{'));
+    assert.ok(fs.existsSync(path.join(base,'redesign','scripts','workspace.mjs')));
+    assert.ok(fs.existsSync(path.join(base,'redesign','scripts','workspace','ui','index.html')));
   }
 });
 test('the engine is unchanged from the upstream-pinned source',()=>{

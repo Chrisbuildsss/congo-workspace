@@ -1,44 +1,49 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  BookmarkIcon,
-  CommunityIcon,
+  CheckIcon,
   ComposeIcon,
   EllipsisIcon,
+  LibraryIcon,
+  LiveAppIcon,
   LogoMark,
   MenuIcon,
   ProjectsIcon,
 } from "../Icons";
-import type { AppUser, ViewName } from "../types";
-import { Meter, PixelAvatar, Separator, useClickOutside } from "./Ui";
+import type { ThemeSetting, ViewName, WorkspaceStatus } from "../types";
+import { Separator, useClickOutside } from "./Ui";
 
 type Navigate = (name: ViewName) => void;
 
+const THEME_LABELS: [ThemeSetting, string][] = [
+  ["system", "Match system"],
+  ["light", "Light"],
+  ["dark", "Dark"],
+];
+
 export function Sidebar({
   current,
-  user,
+  status,
+  theme,
   expanded,
   showMobileTrigger,
   onToggle,
   onNavigate,
   onCompose,
-  onOpenSettings,
-  onOpenBilling,
-  onOpenFeedback,
-  onOpenTerms,
-  onLogout,
+  onTheme,
+  onOpenAbout,
+  onStop,
 }: {
   current: ViewName;
-  user: AppUser;
+  status: WorkspaceStatus | null;
+  theme: ThemeSetting;
   expanded: boolean;
   showMobileTrigger: boolean;
   onToggle: () => void;
   onNavigate: Navigate;
   onCompose: () => void;
-  onOpenSettings: () => void;
-  onOpenBilling: () => void;
-  onOpenFeedback: () => void;
-  onOpenTerms: () => void;
-  onLogout: () => void;
+  onTheme: (theme: ThemeSetting) => void;
+  onOpenAbout: () => void;
+  onStop: () => void;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useClickOutside<HTMLDivElement>(profileOpen, () =>
@@ -60,6 +65,9 @@ export function Sidebar({
     action();
   };
 
+  const connected = Boolean(status?.ai.connected);
+  const aiLabel = status ? (connected ? "Connected" : "Not connected") : "Checking";
+
   const nav = [
     {
       key: "compose" as const,
@@ -68,10 +76,10 @@ export function Sidebar({
       action: onCompose,
     },
     {
-      key: "community" as const,
-      label: "Community",
-      icon: <CommunityIcon size={20} />,
-      action: () => onNavigate("community"),
+      key: "library" as const,
+      label: "Library",
+      icon: <LibraryIcon size={20} />,
+      action: () => onNavigate("library"),
     },
     {
       key: "projects" as const,
@@ -80,10 +88,10 @@ export function Sidebar({
       action: () => onNavigate("projects"),
     },
     {
-      key: "boards" as const,
-      label: "Boards",
-      icon: <BookmarkIcon size={20} />,
-      action: () => onNavigate("boards"),
+      key: "live" as const,
+      label: "Live App",
+      icon: <LiveAppIcon size={20} />,
+      action: () => onNavigate("live"),
     },
   ];
 
@@ -128,30 +136,28 @@ export function Sidebar({
             <button
               type="button"
               className="sidebar-brand"
-              aria-label="Community"
+              aria-label="Library"
               onClick={() => {
-                onNavigate("community");
+                onNavigate("library");
                 if (window.innerWidth <= 900) onToggle();
               }}
             >
               <LogoMark size={16} />
-              <span>Variant</span>
+              <span>Congo</span>
             </button>
           ) : null}
         </header>
 
         <nav className="sidebar-links">
           {nav.map((item) => {
-            const active =
-              current === item.key ||
-              (item.key === "boards" && current === "board") ||
-              (item.key === "compose" && current === "chat");
+            const active = current === item.key;
             return (
               <button
                 type="button"
                 key={item.key}
                 className={`sidebar-link ${active ? "is-active" : ""}`}
                 aria-label={item.label}
+                aria-current={active ? "page" : undefined}
                 data-tooltip={item.label}
                 onClick={() => {
                   item.action();
@@ -169,78 +175,85 @@ export function Sidebar({
           <button
             type="button"
             className="avatar-button"
-            aria-label="Profile menu"
+            aria-label={`Workspace menu. Your AI: ${aiLabel}`}
             aria-expanded={profileOpen}
             onClick={() => setProfileOpen((value) => !value)}
           >
-            <PixelAvatar src={user.avatarUrl} size={24} />
+            <span className="workspace-avatar" data-connected={connected || undefined}>
+              <LogoMark size={14} />
+              <i />
+            </span>
             <span className="sidebar-profile-label">
-              <b>{user.displayName}</b>
-              <small>Free plan</small>
+              <b>Your AI</b>
+              <small>{aiLabel}</small>
             </span>
           </button>
           {profileOpen ? (
             <div className="profile-menu" role="menu">
-              <button
-                type="button"
-                className="profile-summary"
-                onClick={() => {
-                  runProfileAction(onOpenBilling);
-                }}
-              >
-                <PixelAvatar src={user.avatarUrl} size={22} />
+              <div className="profile-summary" role="presentation">
+                <span className="workspace-avatar" data-connected={connected || undefined}>
+                  <LogoMark size={13} />
+                  <i />
+                </span>
                 <span className="profile-summary-copy">
                   <span className="profile-summary-top">
-                    <b>{user.displayName}</b>
-                    <em>Free</em>
+                    <b>Congo workspace</b>
+                    <em>Local</em>
                   </span>
-                  <span>{user.email}</span>
-                  <span className="profile-progress-row">
-                    <Meter value={38} max={60} />
-                    <span><b>38 Fast</b> left</span>
+                  <span>
+                    {connected
+                      ? "Ready for requests"
+                      : "Actions need a connected AI"}
                   </span>
+                  <span>{status?.app ? `App: ${status.app.name}` : "No app attached"}</span>
                 </span>
-              </button>
+              </div>
               <Separator />
-              <button
-                type="button"
+              <span className="profile-menu-label">Appearance</span>
+              {THEME_LABELS.map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  role="menuitemradio"
+                  aria-checked={theme === value}
+                  className="profile-item"
+                  onClick={() => onTheme(value)}
+                >
+                  <span className="profile-item-icon">
+                    {theme === value ? <CheckIcon size={12} /> : null}
+                  </span>
+                  {label}
+                </button>
+              ))}
+              <Separator />
+              <a
                 className="profile-item"
-                onClick={() => {
-                  runProfileAction(onOpenSettings);
-                }}
-              >
-                <span className="profile-item-icon">◉</span>
-                Account Settings
-              </button>
-              <button
-                type="button"
-                className="profile-item"
-                onClick={() => {
-                  runProfileAction(onOpenFeedback);
-                }}
-              >
-                <span className="profile-item-icon">◌</span>
-                Give feedback
-              </button>
-              <button
-                type="button"
-                className="profile-item"
-                onClick={() => {
-                  runProfileAction(onOpenTerms);
-                }}
+                role="menuitem"
+                href="https://buildwithcongo.com/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setProfileOpen(false)}
               >
                 <span className="profile-item-icon">↗</span>
-                Terms and Privacy
+                Congo account
+              </a>
+              <button
+                type="button"
+                role="menuitem"
+                className="profile-item"
+                onClick={() => runProfileAction(onOpenAbout)}
+              >
+                <span className="profile-item-icon">◌</span>
+                About this workspace
               </button>
               <button
                 type="button"
+                role="menuitem"
                 className="profile-item profile-logout"
-                onClick={() => {
-                  runProfileAction(onLogout);
-                }}
+                onClick={() => runProfileAction(onStop)}
               >
                 <span className="profile-item-icon">→</span>
-                Log out
+                Stop workspace
               </button>
             </div>
           ) : null}
@@ -257,7 +270,7 @@ export function Topbar({
   className = "",
   children,
 }: {
-  title?: string;
+  title?: ReactNode;
   left?: ReactNode;
   right?: ReactNode;
   className?: string;

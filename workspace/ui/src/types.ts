@@ -1,53 +1,76 @@
-export type ViewName = "community" | "projects" | "boards" | "board" | "chat";
+export type ViewName = "compose" | "library" | "projects" | "live";
 
-export type DesignKind =
-  | "mint"
-  | "aura"
-  | "post"
-  | "portfolio"
-  | "archive"
-  | "signal"
-  | "folio"
-  | "grid";
+export type ThemeSetting = "system" | "light" | "dark";
 
-export type ArtifactKind = "design" | "image" | "site";
+export interface DesignSource {
+  kind: "screen" | "template" | "app";
+  id: string;
+  version?: string;
+  app?: string;
+}
 
+/** A design card: real running code from the working area, or a library screenshot. */
 export interface Design {
   id: string;
   title: string;
-  author: string;
-  likes: number;
-  bookmarks: number;
-  kind: DesignKind;
+  summary?: string;
+  author?: string;
   format: "desktop" | "mobile";
-  artifactKind?: ArtifactKind;
+  /** Path on the content origin (`/designs/<id>/`) or a loopback dev URL. */
+  src?: string;
+  /** Screenshot URL, for library items and previews. */
+  image?: string;
+  parentId?: string;
+  action?: string;
+  source?: DesignSource;
+  createdAt?: string;
 }
 
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+  at?: string;
 }
 
-export interface ChatProject {
+export interface Compose {
   id: string;
   title: string;
   prompt: string;
-  status: "draft" | "generating" | "complete";
-  designs: Design[];
+  status: "draft" | "waiting" | "complete";
+  designIds: string[];
   messages: ChatMessage[];
+  appId?: string | null;
 }
 
-export interface Board {
+export interface Project {
   id: string;
   name: string;
   designIds: string[];
+  appId?: string | null;
 }
 
-export interface AppUser {
-  displayName: string;
-  username: string;
-  email: string;
-  avatarUrl?: string;
-  isPrivate: boolean;
+export interface AppRef {
+  id: string;
+  path: string;
+  name: string;
+}
+
+export interface WorkspaceState {
+  settings: { theme: ThemeSetting };
+  view: ViewName;
+  apps: AppRef[];
+  activeAppId: string | null;
+  composes: Compose[];
+  designs: Record<string, Design>;
+  projects: Project[];
+}
+
+export interface WorkspaceStatus {
+  protocol: number;
+  version: string;
+  view: ViewName;
+  contentOrigin: string;
+  ai: { connected: boolean; via: "workspace" | "app" | null; workspaceHelper: boolean };
+  app: (AppRef & { helper: boolean }) | null;
 }

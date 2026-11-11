@@ -10,7 +10,7 @@ import {
   TrashIcon,
 } from "../Icons";
 import type { Design } from "../types";
-import DesignSurface from "../DesignSurface";
+import DesignFrame from "../DesignFrame";
 import { useClickOutside } from "./Ui";
 
 export type CardAction =
@@ -58,7 +58,7 @@ export default function DesignCard({
   showTitle = true,
   showHoverActions = true,
   showEllipsis = true,
-  showLike = true,
+  showLike = false,
   compact = false,
   saved = false,
 }: {
@@ -127,7 +127,7 @@ export default function DesignCard({
         if (!menuOpen) setQuickOpen(false);
       }}
     >
-      <DesignSurface kind={design.kind} />
+      <DesignFrame design={design} />
 
       <div className="card-shade" aria-hidden="true" />
       <div className="card-heading" data-priority="always">
@@ -147,7 +147,7 @@ export default function DesignCard({
           </button>
         ) : null}
         <span className="card-title-pill">
-          {showAuthor ? <small>{design.author}</small> : null}
+          {showAuthor && design.author ? <small>{design.author}</small> : null}
           {showTitle ? <b>{design.title}</b> : null}
         </span>
       </div>
@@ -293,7 +293,7 @@ export default function DesignCard({
             }}
           >
             <HeartIcon filled={liked} />
-            <span>{design.likes + (liked ? 1 : 0)}</span>
+            <span>{liked ? 1 : 0}</span>
           </button>
         ) : null}
       </div>

@@ -1,14 +1,12 @@
 {
-  "name": "variant-design-app-clone",
+  "name": "congo-workspace-ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Congo workspace interface. Built into skills/redesign/scripts/workspace/ui.",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 4620 --strictPort",
-    "build": "tsc -b && vite build",
-    "preview:file": "npm run build && node scripts/build-single-file.mjs && node scripts/verify-single-file.mjs",
-    "preview": "vite preview --host 127.0.0.1 --port 4621 --strictPort",
-    "qa:visual": "npm run build && node scripts/visual-qa.mjs"
+    "dev": "vite --host 127.0.0.1 --port 4868 --strictPort",
+    "build": "tsc -b && vite build"
   },
   "dependencies": {
     "react": "19.1.1",
@@ -18,9 +16,8 @@
     "@types/react": "19.1.16",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "4.7.0",
-    "playwright": "1.65.0",
     "typescript": "5.9.2",
     "vite": "6.4.6"
   },
-  "license": "UNLICENSED"
+  "license": "Apache-2.0"
 }

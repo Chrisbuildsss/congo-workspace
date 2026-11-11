@@ -1,0 +1,130 @@
+[
+  {
+    "route": "/library",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\library-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\compose-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\projects-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\live-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/library",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\library-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\compose-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\projects-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m2-shell\\live-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/library",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\library-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\compose-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\projects-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\live-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/library",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\library-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\compose-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/projects",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\projects-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m2-shell\\live-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  }
+]

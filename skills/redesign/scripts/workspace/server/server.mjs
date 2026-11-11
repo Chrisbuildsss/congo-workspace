@@ -11,7 +11,7 @@ import { helperStatus } from './live.mjs';
 import { createCatalog } from './catalog.mjs';
 import { ensureHelper, findLauncher, followEvents, postSteer, prepareArea, referenceDir } from './impeccable.mjs';
 import { helperInfo } from './live.mjs';
-import { buildRequest, describeAction, newId, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
+import { buildRequest, describeAction, isBundleOnly, newId, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
 import { DevServers, normalizeUrl } from './devserver.mjs';
 import { runImpeccable } from './impeccable.mjs';
 
@@ -141,6 +141,27 @@ function serveFile(res, file, headers = {}) {
   const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
   send(res, 200, fs.readFileSync(file), { 'Content-Type': type, ...headers });
   return true;
+}
+
+// The design folder named by a same-origin Referer (/designs/<id>/...).
+function designFromReferer(referer, contentPort) {
+  if (!referer) return null;
+  let url;
+  try {
+    url = new URL(referer);
+  } catch {
+    return null;
+  }
+  if (!['127.0.0.1', 'localhost'].includes(url.hostname) || Number(url.port) !== contentPort) return null;
+  const match = /^\/designs\/([^/]+)\//.exec(url.pathname);
+  if (!match) return null;
+  let id;
+  try {
+    id = decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+  return /^[A-Za-z0-9._-]+$/.test(id) && !/^\.+$/.test(id) ? id : null;
 }
 
 function appName(appPath) {
@@ -662,6 +683,13 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         // own script into the working area's pages; the frame loads ?edit=1.
         const design = store.get().designs[body.designId];
         if (!design?.local) return send(res, 404, { error: 'Only designs in this workspace can be edited' });
+        let page = '';
+        try {
+          page = fs.readFileSync(path.join(files.designs, design.id, 'index.html'), 'utf8');
+        } catch {}
+        if (page && isBundleOnly(page)) {
+          return send(res, 200, { editable: false, reason: 'This design is a built app, so Impeccable has nothing in its page to select. Make editable asks your AI for a static copy that looks the same.' });
+        }
         const info = await helperForRequests();
         const { output } = await runImpeccable(launcher, ['live-inject', '--port', String(info.port)], {
           cwd: files.area,
@@ -778,6 +806,13 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
           return send(res, 200, html, { 'Content-Type': MIME['.html'] });
         }
         if (file && serveFile(res, file)) return undefined;
+      } else {
+        // A design built from an app often asks for its assets from the site
+        // root (/assets/logo.svg). Resolve those inside the design that asked,
+        // named by the page or stylesheet that made the request.
+        const design = designFromReferer(req.headers.referer, servedContentPort);
+        const file = design && fileInside(path.join(files.designs, design), url.pathname);
+        if (file && path.extname(file) && serveFile(res, file)) return undefined;
       }
       return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
     } catch (error) {

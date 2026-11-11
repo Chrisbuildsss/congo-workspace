@@ -9,7 +9,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { startWorkspaceServer } from '../skills/redesign/scripts/workspace/server/server.mjs';
-import { describeAction, steerMessage, buildRequest } from '../skills/redesign/scripts/workspace/server/requests.mjs';
+import { describeAction, isBundleOnly, steerMessage, buildRequest } from '../skills/redesign/scripts/workspace/server/requests.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-workspace-requests-'));
 const root = path.join(tmp, 'home');
@@ -202,4 +202,18 @@ test('steer messages stay under Impeccable\'s 4,000-character limit; unknown act
   assert.equal(describeAction('more:format-disk'), null);
   assert.equal(describeAction('bolder').command, 'bolder');
   assert.equal(describeAction('subtle').command, null);
+});
+
+test('Edit tells a bundled app from a page Impeccable can pick in, and offers Make editable', async () => {
+  const bundle = '<!doctype html><html><head><script type="module" src="/designs/b/assets/index.js"></script></head><body>\n  <div id="root"></div>\n<!-- impeccable-live-start --><script src="http://localhost:8400/live.js"></script><!-- impeccable-live-end -->\n</body></html>';
+  assert.equal(isBundleOnly(bundle), true);
+  assert.equal(isBundleOnly('<!doctype html><body><main><h1>People</h1><table><tr><td>Ana</td></tr></table></main><script src="menu.js"></script></body>'), false);
+  assert.equal(isBundleOnly('<!doctype html><body><div id="root"></div></body>'), false, 'no script, nothing to wait for');
+  writeDesign('bundled', { title: 'Bundled' }, bundle);
+  await until(async () => (await api('/api/state')).value.designs?.bundled, 'the bundled design card');
+  const { status, value } = await api('/api/edit', { designId: 'bundled' });
+  assert.equal(status, 200);
+  assert.equal(value.editable, false);
+  assert.match(value.reason, /Make editable/);
+  assert.equal(describeAction('editable').label, 'Make editable');
 });

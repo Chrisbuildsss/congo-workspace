@@ -15,6 +15,9 @@ export const TWEAKS = {
   quieter: { label: 'Quieter', command: 'quieter', brief: 'Impeccable quieter: pull it back' },
 };
 
+// Offered by Edit when a design is a script bundle Impeccable cannot pick in.
+export const EDITABLE = { label: 'Make editable', command: null, brief: 'the same design, looking the same, as a static page Impeccable\'s editor can change: its rendered markup in index.html, its stylesheets and assets beside it, and no script bundle' };
+
 export const MORE = ['distill', 'typeset', 'animate', 'delight', 'overdrive', 'polish', 'clarify', 'adapt', 'harden', 'critique', 'audit'];
 
 const ALTERNATIVES = 3;
@@ -31,6 +34,7 @@ function clip(text, max) {
 /** What a tweak or More action asks for. */
 export function describeAction(key) {
   if (TWEAKS[key]) return { key, ...TWEAKS[key] };
+  if (key === 'editable') return { key, ...EDITABLE };
   if (key.startsWith('more:') && MORE.includes(key.slice(5))) {
     const command = key.slice(5);
     return { key, label: command[0].toUpperCase() + command.slice(1), command, brief: `Impeccable ${command}` };
@@ -126,6 +130,22 @@ export function writeRequest(files, request) {
 }
 
 /** Folders in designs/ that hold a finished design (design.json plus an entry). */
+/**
+ * True when a page is only a mount point for a script bundle: its elements
+ * exist only after the script runs, so Impeccable's editor has no markup in
+ * the file to pick or change.
+ */
+export function isBundleOnly(html) {
+  if (!/<script\b[^>]*\bsrc\s*=/i.test(html)) return false;
+  const body = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html)?.[1] ?? html;
+  const content = body
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<(script|noscript|template|style)\b[\s\S]*?<\/\1>/gi, '');
+  const elements = (content.match(/<[a-z][^>]*>/gi) || []).length;
+  const text = content.replace(/<[^>]+>/g, '').trim();
+  return elements <= 2 && text.length < 40;
+}
+
 export function scanDesigns(files) {
   let entries = [];
   try {

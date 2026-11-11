@@ -14,6 +14,7 @@ export default function DesignDetail({
   onClose,
   onBookmark,
   onEdit,
+  onMakeEditable,
 }: {
   design: Design;
   contextLabel?: string;
@@ -26,6 +27,8 @@ export default function DesignDetail({
   onClose: () => void;
   onBookmark: () => void;
   onEdit?: () => void;
+  /** Set when Edit found a script bundle: ask the AI for a static copy instead. */
+  onMakeEditable?: () => void;
 }) {
   useEffect(() => {
     const handleKey = (event: globalThis.KeyboardEvent) => {
@@ -59,10 +62,10 @@ export default function DesignDetail({
               aria-pressed={editing}
               disabled={Boolean(editDisabledReason)}
               title={editDisabledReason}
-              onClick={onEdit}
+              onClick={onMakeEditable ?? onEdit}
             >
               <PencilIcon size={13} />
-              {editing ? "Editing" : "Edit"}
+              {onMakeEditable ? "Make editable" : editing ? "Editing" : "Edit"}
             </button>
           </div>
         ) : null}

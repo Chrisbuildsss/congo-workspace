@@ -19,6 +19,7 @@ export type CardAction =
   | "bolder"
   | "quieter"
   | "edit"
+  | "editable"
   | "open"
   | "preview"
   | "save"

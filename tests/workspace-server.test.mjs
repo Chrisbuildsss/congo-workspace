@@ -86,6 +86,21 @@ test('designs are served from their own origin and never outside the designs fol
   assert.doesNotMatch(await (await fetch(`${base}/designs/d1/`)).text(), /Design one/);
 });
 
+test('root-relative assets resolve inside the design that asked for them', async () => {
+  const dir = path.join(tmp, 'home', 'area', 'designs', 'd2');
+  fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'index.html'), '<img src="/assets/mark.svg">');
+  fs.writeFileSync(path.join(dir, 'assets', 'mark.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  const fromDesign = { headers: { Referer: `${content}/designs/d2/index.html` } };
+  const asset = await fetch(`${content}/assets/mark.svg`, fromDesign);
+  assert.equal(asset.status, 200);
+  assert.match(asset.headers.get('content-type'), /svg/);
+  assert.equal((await fetch(`${content}/assets/mark.svg`)).status, 404, 'no Referer, no guess');
+  assert.equal((await fetch(`${content}/assets/mark.svg`, { headers: { Referer: `http://evil.test/designs/d2/` } })).status, 404);
+  assert.equal((await fetch(`${content}/..%2f..%2fstate.json`, fromDesign)).status, 404);
+  assert.equal((await fetch(`${content}/assets/mark.svg`, { headers: { Referer: `${content}/designs/..%2f/x` } })).status, 404);
+});
+
 test('theme, view and compose changes persist to state.json', async () => {
   assert.equal((await api('/api/settings', { theme: 'neon' })).status, 400);
   assert.equal((await api('/api/settings', { theme: 'light' })).value.settings.theme, 'light');

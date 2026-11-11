@@ -85,7 +85,13 @@ export default function App() {
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatOpen, setChatOpen] = useState(true);
-  const [detail, setDetail] = useState<{ design: Design; context?: string; editing?: boolean } | null>(null);
+  const [detail, setDetail] = useState<{
+    design: Design;
+    context?: string;
+    editing?: boolean;
+    /** Edit found a script bundle; the center button becomes Make editable. */
+    bundled?: boolean;
+  } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [aboutOpen, setAboutOpen] = useState(false);
   const [saveFor, setSaveFor] = useState<Design | null>(null);
@@ -203,7 +209,15 @@ export default function App() {
       return;
     }
     try {
-      const result = await api<{ switched: string | null; listening: boolean }>("/api/edit", { designId: design.id });
+      const result = await api<{ editable?: false; reason?: string; switched: string | null; listening: boolean }>(
+        "/api/edit",
+        { designId: design.id },
+      );
+      if (result.editable === false) {
+        setDetail((current) => (current ? { ...current, bundled: true } : current));
+        showToast(result.reason ?? "Impeccable can't select parts of this design");
+        return;
+      }
       setDetail((current) => (current ? { ...current, editing: true } : current));
       showToast(
         result.switched
@@ -511,6 +525,15 @@ export default function App() {
             onBookmark={() => setSaveFor(detail?.design ?? null)}
             editing={Boolean(detail.editing)}
             onEdit={detail.design.local ? () => void editDesign(detail.design) : undefined}
+            onMakeEditable={
+              detail.bundled
+                ? () => {
+                    const design = detail.design;
+                    setDetail(null);
+                    handleCardAction("editable", design);
+                  }
+                : undefined
+            }
           />
         ) : null}
 

@@ -13,8 +13,11 @@ The workspace shows the user that you are connected while your poll is parked on
 ## Every request
 
 - Read the request file named in the message (`requests/<id>.json` in the working area). It holds the type, the user's words, the app (`app.path` when the user has one), the design or library item, the action, and `outputs`: the folders your results go in.
-- Write each result into its `outputs[i].dir`: an `index.html` that runs on its own (inline or relative CSS, JS and assets; no build step left to do), then `design.json` with at least `{"title": "..."}` and optionally `summary` (one sentence), `format` (`desktop` or `mobile`), `source` and `notices`. Write `design.json` last: the card appears when it lands. A design that needs a dev server may instead set `"url": "http://127.0.0.1:<port>/..."` (loopback only) and keep that server running.
-- A design is served at `/designs/<id>/` on its own origin. For a single-page app, build with that absolute base (Vite: `--base /designs/<id>/`; in Git Bash set `MSYS_NO_PATHCONV=1` so the path is not rewritten), and if its router reads `location.pathname`, set the start route before the app script runs (for example `history.replaceState(null, '', '/people')`). Asset paths written as absolute strings in app code (`/assets/logo.svg`) are not rewritten by the base and will 404; route them through the base.
+- Write each result into its `outputs[i].dir` as a static page: an `index.html` that holds the page's markup, with its stylesheets, fonts and images beside it and only the scripts its interactions need (menus, tabs, dialogs); no build step left to do. Then write `design.json` with at least `{"title": "..."}` and optionally `summary` (one sentence), `format` (`desktop` or `mobile`), `source` and `notices`. Write `design.json` last: the card appears when it lands.
+- Keep the markup in the file. Edit opens the design in Impeccable's live editor, which selects and changes elements in `index.html`; a single-page app bundle whose page exists only after its script runs gives it nothing to select, and the workspace offers the user Make editable instead.
+- When the design starts from an existing app, build or run that page from a copy of the app, open the real route in a browser, and save what it rendered: the document's markup without the module scripts, the stylesheets it loaded copied beside it, and the fonts and images they use. Keep the app's markup and class names so its CSS still applies. A design that only works on a dev server may set `"url": "http://127.0.0.1:<port>/..."` (loopback only) and keep that server running; it shows as a card but cannot be edited.
+- A design is served at `/designs/<id>/` on its own origin. Relative URLs resolve inside the design folder, and root-relative ones (`/assets/logo.svg`) resolve inside the design that requested them.
+- When the user edits a design, Impeccable's events carry `pageUrl` `/designs/<id>/`: its file is `designs/<id>/index.html` in the working area (pass `--file designs/<id>/index.html` to `live-wrap`). Accepted variants change that design in place.
 - Outside a `build` request, never change the user's project. Work in the working area.
 - Reply exactly once: `impeccable live-poll --reply <id> steer_done "<one short line for the user>"`. On failure: `--reply <id> error "<short reason>"`. Then poll again.
 - Missing context (which app, which page, what to keep) is asked in this chat. Keep the request open while you wait; reply when the work is done.
@@ -39,6 +42,7 @@ The user typed a request in the workspace composer. Make `outputs.length` altern
 | `distill`, `typeset`, `animate`, `delight`, `overdrive`, `polish`, `clarify`, `adapt`, `harden` | Same: read the command reference and apply it. |
 | `critique`, `audit` | Run the command on the design; write its report into `design.json` `summary` (short) and a `report.md` beside it; the copy may stay unchanged. |
 | `custom` | Apply the user's words in `action.brief`. |
+| `editable` | The design is a script bundle. Render it in a browser and save it as a static page (see Every request) that looks the same; change nothing else. |
 
 Title it `<original title> · <action label>` and say what changed in `summary`.
 
@@ -47,7 +51,7 @@ Title it `<original title> · <action label>` and say what changed in `summary`.
 1. Source comes only through Congo's authorized delivery: the Congo CLI (`congo search`, `congo add <item.id> --project <dir>`, `congo create <item.id> --project <dir>`; `congo --help` for the options in the installed version) or Congo's MCP server. Use `workspace.sources` from the request as the folder. Installing source needs the user's own Congo sign-in and subscription: if `congo whoami` shows they are not signed in or not subscribed, tell them in this chat to run `congo login` themselves, and reply `error "Needs Congo sign-in and a subscription"`. Never ask for, read or handle their sign-in.
 2. Use the selected screen package for a screen; use the full template only when the request needs the whole app. Follow Impeccable's `congo.md` for adapting it to the user's product: content, labels, routes and relevant styling change; useful behavior, source pins and required notices stay.
 3. When `action` is set (a tweak on a library item), apply it after adapting, as in `tweak`.
-4. Build it to a static page in `outputs[0].dir` (for a Vite project, build with a relative base and copy the output). Put `source` (`kind`, `id`, `version`, `app`) and the package's notices in `design.json`.
+4. Save it as a static page in `outputs[0].dir`, rendered from the adapted copy as described in Every request. Put `source` (`kind`, `id`, `version`, `app`) and the package's notices in `design.json`.
 
 Exploring the Library never changes the user's app.
 

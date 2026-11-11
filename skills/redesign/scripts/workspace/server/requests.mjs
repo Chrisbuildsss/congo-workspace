@@ -43,7 +43,7 @@ export function describeAction(key) {
 }
 
 export function buildRequest({ type, id = newId(), files, reference, impeccableReference, app, compose, text, design, action, item, attachment }) {
-  const count = type === 'compose' ? ALTERNATIVES : type === 'build' ? 0 : 1;
+  const count = type === 'compose' ? ALTERNATIVES : ['tweak', 'library'].includes(type) ? 1 : 0;
   const outputs = Array.from({ length: count }, (_, i) => {
     const designId = `${id}-${i + 1}`;
     return { id: designId, dir: path.join(files.designs, designId) };
@@ -102,6 +102,15 @@ export function steerMessage(request, requestFile) {
       break;
     case 'build':
       lead = `Build this: apply the design "${clip(request.design?.title, 120)}" to the user's real project${request.app ? ` at ${request.app.path}` : ''}. Ask in your chat if the project or page is unclear.`;
+      break;
+    case 'start-app':
+      lead = `Start the user's app at ${request.app?.path ?? '(ask which app)'} with its own dev command and keep it running. Reply steer_done with its local URL (http://127.0.0.1:PORT/ or http://localhost:PORT/) so the workspace can show it.`;
+      break;
+    case 'live-edit':
+      lead = `Turn on Impeccable's live editor for the user's running app at ${request.app?.path ?? '(ask which app)'}: run Impeccable's live boot in that project (its live.md, and live-setup.md on first use), keep the app's dev server running, reply steer_done with the app's local URL, then poll that project's helper instead of the workspace area. The workspace follows both.`;
+      break;
+    case 'switch-to-area':
+      lead = `The user is editing a design in the workspace. Reply steer_done, then run your Impeccable live-poll from the workspace area (${request.workspace.area}) again so its live editor reaches you.`;
       break;
     default:
       lead = 'Handle this workspace request.';

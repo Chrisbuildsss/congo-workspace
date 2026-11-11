@@ -85,7 +85,7 @@ export default function App() {
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatOpen, setChatOpen] = useState(true);
-  const [detail, setDetail] = useState<{ design: Design; context?: string } | null>(null);
+  const [detail, setDetail] = useState<{ design: Design; context?: string; editing?: boolean } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [aboutOpen, setAboutOpen] = useState(false);
   const [saveFor, setSaveFor] = useState<Design | null>(null);
@@ -182,6 +182,36 @@ export default function App() {
     } catch (error) {
       showToast((error as Error).message);
       return false;
+    }
+  };
+
+  const attachApp = async (path: string) => {
+    try {
+      const result = await api<{ state: WorkspaceState }>("/api/apps", { path });
+      setState(result.state);
+      return true;
+    } catch (error) {
+      showToast((error as Error).message);
+      return false;
+    }
+  };
+
+  /** Edit: Impeccable adds its live editor to the page; the frame reloads with it. */
+  const editDesign = async (design: Design) => {
+    if (detail?.editing) {
+      setDetail({ ...detail, editing: false });
+      return;
+    }
+    try {
+      const result = await api<{ switched: string | null; listening: boolean }>("/api/edit", { designId: design.id });
+      setDetail((current) => (current ? { ...current, editing: true } : current));
+      showToast(
+        result.switched
+          ? "Asked your AI to come back to the workspace for editing"
+          : "Impeccable's editor is on. Select something in the page.",
+      );
+    } catch (error) {
+      showToast((error as Error).message);
     }
   };
 
@@ -394,7 +424,22 @@ export default function App() {
             )
           ) : null}
 
-          {route.name === "live" ? <LiveAppView status={status} /> : null}
+          {route.name === "live" && state ? (
+            <LiveAppView
+              status={status}
+              apps={state.apps}
+              activeAppId={state.activeAppId}
+              requests={state.requests.filter((r) => r.type === "start-app" || r.type === "live-edit")}
+              onPickApp={(id) => {
+                const app = state.apps.find((item) => item.id === id);
+                if (app) void attachApp(app.path);
+              }}
+              onAttach={attachApp}
+              onAskAI={() => void sendRequest({ type: "start-app", appId: state.activeAppId })}
+              onEdit={() => void sendRequest({ type: "live-edit", appId: state.activeAppId })}
+              showToast={showToast}
+            />
+          ) : null}
 
           {route.name === "compose" && activeCompose && state ? (
             <ComposeView
@@ -464,7 +509,8 @@ export default function App() {
             }
             onClose={() => setDetail(null)}
             onBookmark={() => setSaveFor(detail?.design ?? null)}
-            onEdit={detail.design.src ? () => showToast("Editing arrives with the Edit step") : undefined}
+            editing={Boolean(detail.editing)}
+            onEdit={detail.design.local ? () => void editDesign(detail.design) : undefined}
           />
         ) : null}
 

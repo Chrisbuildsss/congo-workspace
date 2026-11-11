@@ -92,7 +92,7 @@ export default function DesignDetail({
 
       <div className={`design-detail-stage ${design.format === "mobile" ? "is-mobile-design" : ""}`}>
         <div className="design-detail-frame">
-          <DesignFrame design={design} interactive />
+          <DesignFrame design={design} interactive edit={editing} key={editing ? "edit" : "view"} />
         </div>
       </div>
     </section>

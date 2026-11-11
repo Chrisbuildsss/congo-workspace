@@ -1,0 +1,34 @@
+[
+  {
+    "route": "/live",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m6-live\\live-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m6-live\\live-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m6-live\\live-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/live",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m6-live\\live-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  }
+]

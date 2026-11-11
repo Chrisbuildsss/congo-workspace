@@ -19,14 +19,18 @@ export function designUrl(design: Design, origin: string): string | null {
 export default function DesignFrame({
   design,
   interactive = false,
+  edit = false,
 }: {
   design: Design;
   interactive?: boolean;
+  /** Load the page with Impeccable's live editor (it injected its own script). */
+  edit?: boolean;
 }) {
   const origin = useContext(ContentOrigin);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0);
-  const url = designUrl(design, origin);
+  const base = designUrl(design, origin);
+  const url = base && edit && design.local ? `${base}${base.includes("?") ? "&" : "?"}edit=1` : base;
   const width = VIRTUAL_WIDTH[design.format] ?? VIRTUAL_WIDTH.desktop;
 
   useEffect(() => {

@@ -112,9 +112,10 @@ export interface WorkspaceState {
 
 export interface WorkspaceRequest {
   id: string;
-  type: "compose" | "tweak" | "build" | "library";
+  type: "compose" | "tweak" | "build" | "library" | "start-app" | "live-edit" | "switch-to-area";
   status: "sent" | "done" | "error";
-  composeId: string;
+  composeId: string | null;
+  appId?: string | null;
   designId: string | null;
   action: string | null;
   createdAt: string;

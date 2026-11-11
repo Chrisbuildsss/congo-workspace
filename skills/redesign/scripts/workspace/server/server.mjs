@@ -12,6 +12,8 @@ import { createCatalog } from './catalog.mjs';
 import { ensureHelper, findLauncher, followEvents, postSteer, prepareArea, referenceDir } from './impeccable.mjs';
 import { helperInfo } from './live.mjs';
 import { buildRequest, describeAction, newId, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
+import { DevServers, normalizeUrl } from './devserver.mjs';
+import { runImpeccable } from './impeccable.mjs';
 
 export const PROTOCOL = 1;
 export const VERSION = '0.1.0';
@@ -154,6 +156,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   for (const dir of [files.area, files.designs, files.requests, files.sources]) fs.mkdirSync(dir, { recursive: true });
   const store = new Store(files.state);
   const catalog = createCatalog({ cacheDir: path.join(root, 'cache'), env, ...(fetchImpl ? { fetchImpl } : {}) });
+  const dev = new DevServers({ log });
   const secret = token || crypto.randomBytes(24).toString('base64url');
   let uiPort = 0;
   let servedContentPort = 0;
@@ -223,8 +226,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     const requests = Object.values(s.requests)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
       .slice(0, 100)
-      .map(({ id, type, status: st, composeId, designId, action, createdAt, outputs, message }) => ({
-        id, type, status: st, composeId, designId, action, createdAt, outputs, message,
+      .map(({ id, type, status: st, composeId, appId, designId, action, createdAt, outputs, message }) => ({
+        id, type, status: st, composeId, appId, designId, action, createdAt, outputs, message,
       }));
     return {
       settings: s.settings,
@@ -282,7 +285,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
 
   async function createRequest(body) {
     const type = body.type;
-    if (!['compose', 'tweak', 'build', 'library'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
+    if (!['compose', 'tweak', 'build', 'library', 'start-app', 'live-edit', 'switch-to-area'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
+    const standalone = ['start-app', 'live-edit', 'switch-to-area'].includes(type);
     const id = newId();
     const s = store.get();
     let compose = null;
@@ -327,12 +331,31 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         if (!action) throw Object.assign(new Error('Unknown action'), { status: 400 });
       }
       userText = `${action ? action.label : 'Use this'}: ${item.title}${item.app ? ` (${item.app})` : ''}`;
+    } else if (type !== 'switch-to-area') {
+      const app = s.apps.find((a) => a.id === body.appId) ?? activeApp();
+      if (!app) throw Object.assign(new Error('Attach your app first'), { status: 409 });
+      body.appId = app.id;
     }
 
-    const info = await helperForRequests();
+    // Steers go to the helper the AI is polling: the workspace area's, or
+    // the app's while it live-edits the running app.
+    await refreshLive();
+    const appForHelper = activeApp();
+    const info = live.app.agentPolling && !live.area.agentPolling && appForHelper
+      ? helperInfo(appForHelper.path)
+      : await helperForRequests();
     const attachment = saveAttachment(id, body.attachment);
 
     const result = store.update((state) => {
+      if (standalone) {
+        const app = state.apps.find((a) => a.id === body.appId) ?? null;
+        const request = buildRequest({ type, id, files, reference: protocolFile, impeccableReference, app });
+        state.requests[id] = {
+          id, type, status: 'sent', composeId: null, designId: null, action: null, item: null,
+          appId: app?.id ?? null, outputs: [], createdAt: request.createdAt, message: null,
+        };
+        return { request, compose: null };
+      }
       let target = compose ? state.composes.find((c) => c.id === compose.id) : null;
       if (!target) target = newCompose(state, type === 'library' ? item.title : userText, body.appId);
       if (type === 'compose' && (target.title === 'New design' || !target.title)) target.title = text.split(/[.!?\n]/)[0].slice(0, 60) || 'New design';
@@ -376,12 +399,12 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       store.update((state) => {
         state.requests[id].status = 'error';
         state.requests[id].message = error.message;
-        const target = state.composes.find((c) => c.id === result.compose.id);
+        const target = result.compose ? state.composes.find((c) => c.id === result.compose.id) : null;
         if (target) target.status = 'complete';
       });
       throw error;
     }
-    return { request: store.get().requests[id], composeId: result.compose.id };
+    return { request: store.get().requests[id], composeId: result.compose?.id ?? null };
   }
 
   function settleCompose(state, composeId) {
@@ -411,9 +434,16 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
           : r.message || 'Done.';
         target.messages.push({ id: `a-${r.id}`, role: 'assistant', text, at: r.doneAt, requestId: r.id });
       }
-      settleCompose(state, r.composeId);
+      if (r.composeId) settleCompose(state, r.composeId);
     });
     live.lastPollAt = Date.now();
+    // "Ask my AI to start it" / live editing: the reply carries the app's URL.
+    const done = store.get().requests[event.id];
+    if (done.status === 'done' && ['start-app', 'live-edit'].includes(done.type) && done.message) {
+      const match = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):\d{2,5}[^\s"')]*/i.exec(done.message);
+      const app = store.get().apps.find((a) => a.id === done.appId);
+      if (match && app) dev.attachUrl(app, match[0], 'ai');
+    }
   }
 
   function registerDesigns() {
@@ -603,6 +633,49 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         });
         return send(res, 200, publicState());
       }
+      case '/api/live': {
+        const app = store.get().apps.find((a) => a.id === body.appId) ?? activeApp();
+        if (!app) return send(res, 200, { app: null });
+        return send(res, 200, { app, ...dev.status(app) });
+      }
+      case '/api/live/start': {
+        const app = store.get().apps.find((a) => a.id === body.appId) ?? activeApp();
+        if (!app) return send(res, 409, { error: 'Attach your app first' });
+        return send(res, 200, { app, ...dev.start(app) });
+      }
+      case '/api/live/stop': {
+        const app = store.get().apps.find((a) => a.id === body.appId) ?? activeApp();
+        if (!app) return send(res, 409, { error: 'Attach your app first' });
+        return send(res, 200, { app, ...dev.stop(app) });
+      }
+      case '/api/live/url': {
+        const app = store.get().apps.find((a) => a.id === body.appId) ?? activeApp();
+        if (!app) return send(res, 409, { error: 'Attach your app first' });
+        if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]):\d{2,5}(\/|$)/i.test(String(body.url ?? ''))) {
+          return send(res, 400, { error: "Use your app's local address, like http://localhost:5173" });
+        }
+        dev.attachUrl(app, normalizeUrl(body.url), 'user');
+        return send(res, 200, { app, ...dev.status(app) });
+      }
+      case '/api/edit': {
+        // Edit a design with Impeccable's live editor: Impeccable injects its
+        // own script into the working area's pages; the frame loads ?edit=1.
+        const design = store.get().designs[body.designId];
+        if (!design?.local) return send(res, 404, { error: 'Only designs in this workspace can be edited' });
+        const info = await helperForRequests();
+        const { output } = await runImpeccable(launcher, ['live-inject', '--port', String(info.port)], {
+          cwd: files.area,
+          outFile: path.join(root, 'impeccable-inject.json'),
+        });
+        const injected = /"ok"\s*:\s*true/.test(output);
+        if (!injected) return send(res, 502, { error: 'Impeccable could not add its editor to this design' });
+        await refreshLive();
+        let switched = null;
+        if (live.app.agentPolling && !live.area.agentPolling) {
+          switched = (await createRequest({ type: 'switch-to-area' })).request.id;
+        }
+        return send(res, 200, { url: `${design.src}?edit=1`, switched, listening: live.area.agentPolling });
+      }
       case '/api/connect': {
         // Used by the Redesign skill: make sure the helper runs, attach the
         // app if given, and tell the AI where to poll.
@@ -735,6 +808,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     setInterval(() => { refreshLive().catch(() => {}); }, 3000),
   ];
   const unfollow = followEvents(() => helperInfo(files.area), onHelperEvent, log);
+  const unfollowApp = followEvents(() => (activeApp() ? helperInfo(activeApp().path) : null), onHelperEvent, log);
   if (bootHelper && launcher) {
     helperForRequests().catch((error) => log(`helper: ${error.message}`));
   }
@@ -750,6 +824,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     }
     for (const timer of timers) clearInterval(timer);
     unfollow();
+    unfollowApp();
+    dev.stopAll();
     let pending = 2;
     const done = () => { if (--pending === 0) resolveStopped(); };
     ui.close(done);

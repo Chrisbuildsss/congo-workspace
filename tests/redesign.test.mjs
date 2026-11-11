@@ -20,7 +20,18 @@ test('generated required providers ship both skills with resolved placeholders',
     const skill=fs.readFileSync(path.join(base,'redesign','SKILL.md'),'utf8');assert.ok(fs.existsSync(path.join(base,'impeccable','SKILL.md')));assert.ok(!skill.includes('{{'));
     assert.ok(fs.existsSync(path.join(base,'redesign','scripts','workspace.mjs')));
     assert.ok(fs.existsSync(path.join(base,'redesign','scripts','workspace','ui','index.html')));
+    assert.ok(fs.existsSync(path.join(base,'redesign','reference','workspace.md')));
+    assert.match(skill,/workspace.mjs connect --project/);
+    assert.match(skill,/workspace.mjs request --text/);
+    assert.match(skill,/live-poll/);
   }
+});
+test("Redesign opens Compose and routes through Impeccable's live-poll, with no Congo AI",()=>{
+  const src=fs.readFileSync(path.join(root,'skills','redesign','SKILL.src.md'),'utf8');
+  assert.match(src,/^name: redesign$/m);
+  assert.match(src,/help redesign my contacts page/);
+  assert.match(src,/You are the only AI/);
+  assert.doesNotMatch(src,/—/,'no em dashes');
 });
 test('the engine is unchanged from the upstream-pinned source',()=>{
   // The workspace lives outside crates/; the installer downloads the original engine.

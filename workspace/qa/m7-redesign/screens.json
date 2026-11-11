@@ -1,0 +1,50 @@
+[
+  {
+    "route": "/compose/31409028",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\m7-redesign\\compose-31409028-390-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/compose/31409028",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\m7-redesign\\compose-31409028-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/compose/31409028",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m7-redesign\\compose-31409028-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/compose/31409028",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\m7-redesign\\compose-31409028-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  }
+]

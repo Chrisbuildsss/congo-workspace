@@ -2,6 +2,7 @@
 // Congo workspace launcher. Opens (or reuses) the local workspace server.
 //   node workspace.mjs open [--project PATH] [--view compose|library|projects|live] [--no-browser] [--json]
 //   node workspace.mjs connect [--project PATH] [--browser] [--json]   (for the user's AI)
+//   node workspace.mjs request --text "..." [--project PATH] [--browser] [--json]  (Redesign)
 //   node workspace.mjs status [--json]
 //   node workspace.mjs stop
 //   node workspace.mjs serve [--port N]      (foreground; `open` starts this detached)
@@ -139,8 +140,25 @@ async function main() {
       `Congo workspace: ${url}\nWorking area: ${connected.area}\nNext: run Impeccable's live-poll from the working area and keep polling.`);
   }
 
+  if (command === 'request') {
+    // For the user's AI (Redesign): put the user's redesign request into
+    // Compose as a new conversation; it comes back to the AI as a steer.
+    const text = typeof args.text === 'string' ? args.text.trim() : '';
+    if (!text) throw new Error('Pass the request with --text "..."');
+    register(files);
+    const record = await ensure(files, Number(args.port) || 0);
+    let appId = null;
+    if (typeof args.project === 'string') appId = (await request(record, '/api/apps', { path: args.project })).app.id;
+    const { compose } = await request(record, '/api/composes', { title: text.split(/[.!?\n]/)[0].slice(0, 60), appId });
+    const sent = await request(record, '/api/requests', { type: 'compose', composeId: compose.id, text, appId: appId ?? compose.appId });
+    const url = `http://127.0.0.1:${record.port}/compose/${compose.id}#t=${record.token}`;
+    if (args.browser === true) openBrowser(url);
+    return print(args, { url, composeId: compose.id, requestId: sent.request.id },
+      `Sent to Compose: ${url}\nRequest ${sent.request.id} will reach your live-poll as a steer.`);
+  }
+
   if (command !== 'open') {
-    console.error(`Unknown command: ${command}. Use open, connect, status, stop or serve.`);
+    console.error(`Unknown command: ${command}. Use open, connect, request, status, stop or serve.`);
     process.exitCode = 2;
     return;
   }

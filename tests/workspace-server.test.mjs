@@ -1,4 +1,4 @@
-// Congo workspace local server and launcher (skills/redesign/scripts).
+// Congo workspace local server and launcher (skills/congo/scripts).
 // No engine binary, network or browser needed.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,10 +8,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { startWorkspaceServer } from '../skills/redesign/scripts/workspace/server/server.mjs';
+import { startWorkspaceServer } from '../skills/congo/scripts/workspace/server/server.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const launcher = path.join(root, 'skills', 'redesign', 'scripts', 'workspace.mjs');
+const launcher = path.join(root, 'skills', 'congo', 'scripts', 'workspace.mjs');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-workspace-test-'));
 const uiDir = path.join(tmp, 'ui');
 fs.mkdirSync(uiDir, { recursive: true });

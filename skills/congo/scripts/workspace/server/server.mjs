@@ -709,7 +709,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         return send(res, 200, { url: `${design.src}?edit=1`, switched, listening: live.area.agentPolling });
       }
       case '/api/connect': {
-        // Used by the Redesign skill: make sure the helper runs, attach the
+        // Used by the Congo skill: make sure the helper runs, attach the
         // app if given, and tell the AI where to poll.
         if (typeof body.project === 'string' && body.project) attachApp(body.project);
         const info = await helperForRequests();

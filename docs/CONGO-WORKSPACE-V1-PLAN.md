@@ -17,16 +17,16 @@ Source of truth: `docs/CONGO-LOCAL-WORKSPACE-SPEC.md` and `-TODO.md` (Congo repo
 
 | Spec item | Files (all new unless marked) |
 | --- | --- |
-| Shell: Variant layout, Congo identity, rail Compose / Library / Projects / Live App, neutral light theme | `workspace/ui/` (React 19 + Vite, copied from `library/Variant/site` in the Congo repo), built to `skills/redesign/scripts/workspace/ui/` |
+| Shell: Variant layout, Congo identity, rail Compose / Library / Projects / Live App, neutral light theme | `workspace/ui/` (React 19 + Vite, copied from `library/Variant/site` in the Congo repo), built to `skills/congo/scripts/workspace/ui/` |
 | Local server, state, two loopback ports (UI/API and design content), working area | `workspace/server/*.mjs`, data in `%LOCALAPPDATA%\Congo\workspace` or `~/.local/share/congo/workspace` |
-| `congo workspace` | Congo repo `scripts/congo-workspace.mjs` (modified) finds `skills/redesign/scripts/workspace.mjs` and runs it with Node |
+| `congo workspace` | Congo repo `scripts/congo-workspace.mjs` (modified) finds `skills/congo/scripts/workspace.mjs` and runs it with Node |
 | Library: Apps / Screens, previews | `workspace/ui/src/views/Library.tsx`; server proxy for `buildwithcongo.com/api/catalog` and `/api/screens` |
 | Compose: composer to AI, cards of running code, hover actions | `workspace/ui/src/views/Compose.tsx`, `DesignCard.tsx` (modified copy); `workspace/server/actions.mjs` builds request files and steers |
 | Hover action to Impeccable command | Subtle variant: identity-preserving variation (`live.md` default mode); Change layout: `layout`; Recolor: `colorize`; Bolder: `bolder`; Quieter: `quieter`; More: `distill typeset animate delight overdrive polish clarify adapt harden critique audit`; Build this: apply to the user's project |
 | Library Use this / tweaks | steer asks the AI to fetch source with the Congo CLI or MCP into `sources/<id>/` (the user signs in; no secrets pass through the workspace) and adapt it into `designs/<id>/`, outside the user's project |
 | Projects | `workspace/ui/src/views/Projects.tsx` (modified copy), `state.json` |
 | Edit and Live App | design pages get Impeccable's script via `impeccable live-inject`; Live App runs the project's `dev` script on Start, or asks the AI to start it, and asks the AI to run `impeccable live` there for Edit |
-| Redesign skill | `skills/redesign/SKILL.src.md`, `reference/workspace.md`, `scripts/workspace.mjs` |
+| Congo skill (`/congo`, renamed from Redesign on Nov 11) | `skills/congo/SKILL.src.md`, `reference/workspace.md`, `scripts/workspace.mjs` |
 | Cloud saving | plan only; needs Congo server work and the owner's OK |
 
 ## Design contract

@@ -346,7 +346,7 @@ export function readSourceFiles(rootDir) {
     payloads,
   });
 
-  const redesignDir = path.join(rootDir, 'skills', 'redesign');
+  const redesignDir = path.join(rootDir, 'skills', 'congo');
   const redesignFile = path.join(redesignDir, 'SKILL.src.md');
   if (fs.existsSync(redesignFile)) {
     const { frontmatter: fm, body: redesignBody } = parseFrontmatter(fs.readFileSync(redesignFile, 'utf8'));
@@ -704,12 +704,12 @@ export function replacePlaceholders(content, provider, commandNames = [], allSki
   // Otherwise fall back to listing skill names (backwards compat for forks).
   const nonExcluded = commandNames.filter(n => !EXCLUDED_FROM_SUGGESTIONS.has(n));
   let commandList;
-  if (nonExcluded.length === 0 || nonExcluded.every(n => n === 'redesign')) {
+  if (nonExcluded.length === 0 || nonExcluded.every(n => n === 'congo')) {
     // Single-skill architecture: list sub-commands as /impeccable <sub>
     commandList = IMPECCABLE_SUB_COMMANDS
       .map(n => `${cmdPrefix}impeccable ${n}`)
       .join(', ');
-    if (nonExcluded.includes('redesign')) commandList += `, ${cmdPrefix}redesign`;
+    if (nonExcluded.includes('congo')) commandList += `, ${cmdPrefix}congo`;
   } else {
     // Multi-skill architecture (backwards compat)
     commandList = nonExcluded.map(n => `${cmdPrefix}${n}`).join(', ');

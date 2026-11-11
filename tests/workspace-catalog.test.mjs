@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createCatalog, registryOrigin } from '../skills/redesign/scripts/workspace/server/catalog.mjs';
+import { createCatalog, registryOrigin } from '../skills/congo/scripts/workspace/server/catalog.mjs';
 
 const ORIGIN = 'https://buildwithcongo.com';
 const calls = [];

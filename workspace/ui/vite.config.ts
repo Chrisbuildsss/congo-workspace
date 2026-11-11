@@ -6,7 +6,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: "../../skills/redesign/scripts/workspace/ui",
+    outDir: "../../skills/congo/scripts/workspace/ui",
     emptyOutDir: true,
     assetsInlineLimit: 200_000,
     sourcemap: false,

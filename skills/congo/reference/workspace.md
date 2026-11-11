@@ -27,6 +27,7 @@ The workspace shows the user that you are connected while your poll is parked on
 The user typed a request in the workspace composer. Make `outputs.length` alternatives (usually three) as running code.
 
 1. Resolve the surface: the app (`app.path`), the page or route, and the intent, from the request and this conversation. Read the real page's source. Ask here when it is unclear.
+   - **No `app.path` (a new app):** run the real-apps-first round from Impeccable's `reference/congo.md`. Pick the Congo apps closest to what the product does (`congo templates --json`, matched on the product's job, not screen titles), get each one's main screen into the working area through Congo's CLI, and adapt it to the product as one alternative per app: the product's name, content, sample data and navigation, keeping the app's own design. Title each card with the product and the app it builds on. Skip steps 2 and 3 below for these cards.
 2. Identity first. In an existing app, read Impeccable's `live.md` section "Plan three variants": extract the identity lock (Phase A), choose default or departure mode (Phase B; departure only when the user asked for a redesign), give each alternative a different primary axis (Phase C) and run the squint test (Phase D). For a new surface, follow Impeccable's `new-work.md` for directions. Apply `craft-floor.md` as you write.
 3. Build each alternative as the real surface: the actual page in its app frame and navigation, with the app's real content and data shapes, not a thumbnail or a section out of context. A narrow request stays narrow: change that part, keep the rest of the page as it is.
 4. Title each `design.json` with the direction in a few words, and give a one-sentence `summary`.
@@ -58,6 +59,10 @@ Exploring the Library never changes the user's app.
 ## `build`: apply a design to the user's project
 
 The only request that changes the user's code. Apply the design in `design.dir` to the project at `app.path`:
+
+**No `app.path` (a new app):** create the project instead. Ask here for the folder name if the user hasn't given one (default: a new folder named after the product in the current folder). Run `congo create <template-id> --project <new folder>` for the Congo app the design was built on, then carry the approved adaptation through the whole app: adapt its existing screens (content, labels, routes, wiring) before writing new ones, as Impeccable's `congo.md` describes under "After installing". Install its dependencies and build it once. Attach it with `node {{scripts_path}}/workspace.mjs connect --project <new folder>` and tell the user they can start it in Live App.
+
+For an existing app:
 
 - Integrate it into the existing routes, components and styles; keep product behavior, data bindings, forms and actions working; keep the user's unrelated edits.
 - For a whole-app direction, carry it coherently through the affected screens and shared components. A narrow design stays narrow.

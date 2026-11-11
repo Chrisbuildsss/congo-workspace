@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { DevServers, detectDevCommand, normalizeUrl } from '../skills/redesign/scripts/workspace/server/devserver.mjs';
+import { DevServers, detectDevCommand, normalizeUrl } from '../skills/congo/scripts/workspace/server/devserver.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-devserver-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));

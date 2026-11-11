@@ -95,7 +95,7 @@ export const SUITES = {
           'tests/skill-behavior-harness.test.mjs',
           'tests/readme-gitignore.test.mjs',
           'tests/test-suites.test.mjs',
-          'tests/redesign.test.mjs',
+          'tests/congo-skill.test.mjs',
           'tests/workspace-server.test.mjs',
           'tests/workspace-catalog.test.mjs',
           'tests/workspace-requests.test.mjs',

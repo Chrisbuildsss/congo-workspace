@@ -14,6 +14,7 @@ const CARD_MENU: MenuItem[] = [
 import { useClickOutside } from "../components/Ui";
 
 const suggestions = [
+  "Start a new app: a CRM for realtors",
   "Redesign my settings page",
   "Three takes on my pricing page",
   "A calmer dashboard home",
@@ -180,8 +181,8 @@ export default function ComposeView({
                 </div>
                 <p>
                   {aiConnected
-                    ? "Describe a screen or a redesign. Your AI builds working alternatives and they appear here."
-                    : "Connect your AI to start: ask it to open the Congo workspace, or run /redesign in its chat."}
+                    ? "Describe a new app, a screen or a redesign. Your AI builds working alternatives and they appear here."
+                    : "Connect your AI to start: ask it to open the Congo workspace, or run /congo in its chat."}
                 </p>
                 <div className="suggestion-list">
                   {suggestions.map((suggestion) => (
@@ -250,7 +251,7 @@ export default function ComposeView({
               value={prompt}
               onChange={setPrompt}
               onSubmit={onSend}
-              placeholder="Describe a screen or redesign..."
+              placeholder="Describe an app, a screen or a redesign..."
               apps={apps}
               appId={compose.appId ?? null}
               onAppChange={onAppChange}

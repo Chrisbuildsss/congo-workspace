@@ -8,8 +8,8 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { startWorkspaceServer } from '../skills/redesign/scripts/workspace/server/server.mjs';
-import { describeAction, isBundleOnly, steerMessage, buildRequest } from '../skills/redesign/scripts/workspace/server/requests.mjs';
+import { startWorkspaceServer } from '../skills/congo/scripts/workspace/server/server.mjs';
+import { describeAction, isBundleOnly, steerMessage, buildRequest } from '../skills/congo/scripts/workspace/server/requests.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-workspace-requests-'));
 const root = path.join(tmp, 'home');

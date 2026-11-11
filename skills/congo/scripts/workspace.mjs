@@ -2,7 +2,7 @@
 // Congo workspace launcher. Opens (or reuses) the local workspace server.
 //   node workspace.mjs open [--project PATH] [--view compose|library|projects|live] [--no-browser] [--json]
 //   node workspace.mjs connect [--project PATH] [--browser] [--json]   (for the user's AI)
-//   node workspace.mjs request --text "..." [--project PATH] [--browser] [--json]  (Redesign)
+//   node workspace.mjs request --text "..." [--project PATH] [--browser] [--json]  (Congo skill)
 //   node workspace.mjs status [--json]
 //   node workspace.mjs stop
 //   node workspace.mjs serve [--port N]      (foreground; `open` starts this detached)
@@ -141,7 +141,7 @@ async function main() {
   }
 
   if (command === 'request') {
-    // For the user's AI (Redesign): put the user's redesign request into
+    // For the user's AI (Congo skill): put the user's request into
     // Compose as a new conversation; it comes back to the AI as a steer.
     const text = typeof args.text === 'string' ? args.text.trim() : '';
     if (!text) throw new Error('Pass the request with --text "..."');
@@ -164,7 +164,7 @@ async function main() {
   }
 
   if (!fs.existsSync(path.join(uiDir, 'index.html'))) {
-    throw new Error(`The workspace interface is missing at ${uiDir}. Reinstall the Redesign skill.`);
+    throw new Error(`The workspace interface is missing at ${uiDir}. Reinstall the Congo skill.`);
   }
   register(files);
   const record = await ensure(files, Number(args.port) || 0);

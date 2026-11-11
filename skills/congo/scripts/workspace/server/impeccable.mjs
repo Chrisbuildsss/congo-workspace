@@ -24,14 +24,14 @@ export const AREA_CONFIG = {
   cspChecked: true,
 };
 
-/** The Impeccable skill launcher installed next to the Redesign skill. */
+/** The Impeccable skill launcher installed next to the Congo skill. */
 export function findLauncher(env = process.env) {
   const name = process.platform === 'win32' ? 'impeccable.cmd' : 'impeccable';
   const candidates = [
     env.IMPECCABLE_LAUNCHER,
-    // Installed: <skills>/redesign/scripts/workspace/server -> <skills>/impeccable/scripts
+    // Installed: <skills>/congo/scripts/workspace/server -> <skills>/impeccable/scripts
     path.resolve(here, '..', '..', '..', '..', 'impeccable', 'scripts', name),
-    // This repository: skills/redesign/... -> skill/scripts
+    // This repository: skills/congo/... -> skill/scripts
     path.resolve(here, '..', '..', '..', '..', '..', 'skill', 'scripts', name),
   ].filter(Boolean);
   for (const candidate of candidates) {
@@ -96,7 +96,7 @@ export function prepareArea(area) {
 export async function ensureHelper(area, launcher, logDir) {
   const status = await helperStatus(area);
   if (status.running) return helperInfo(area);
-  if (!launcher) throw Object.assign(new Error('Impeccable is not installed next to the Redesign skill'), { status: 409 });
+  if (!launcher) throw Object.assign(new Error('Impeccable is not installed next to the Congo skill'), { status: 409 });
   prepareArea(area);
   const { output } = await runImpeccable(launcher, ['live', '--allow-missing-context'], {
     cwd: area,

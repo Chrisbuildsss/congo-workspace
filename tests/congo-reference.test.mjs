@@ -1,4 +1,4 @@
-// Congo X Impeccable: the fork's Congo instructions live in one reference
+// Congo Workspace: the fork's Congo instructions live in one reference
 // file plus three short pointers. An upstream merge that rewrites the
 // surrounding paragraphs can silently drop a pointer; these checks catch it.
 import { describe, it } from 'node:test';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf-8').replace(/\r\n?/g, '\n');
 
-describe('Congo X Impeccable reference', () => {
+describe('Congo Workspace reference', () => {
   const congo = read('skill/reference/congo.md');
 
   it('is linked from the skill, new-work and live mode', () => {

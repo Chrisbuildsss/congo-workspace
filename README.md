@@ -1,10 +1,10 @@
-# Congo × Impeccable
+# Congo Workspace
 
 **Real app screens under Impeccable's design workflow.**
 
 Impeccable gives your coding agent a process to shape, critique, harden, and finish an interface. Congo gives it a place to start: real, working app screens, full templates, and design handbooks instead of another blank canvas.
 
-> Congo × Impeccable is a fork of [Impeccable](https://github.com/pbakaus/impeccable) by Paul Bakaus. It keeps the commands and workflow, then adds Congo wherever real source helps. [See what changes](#what-congo-adds).
+> Congo Workspace is a fork of [Impeccable](https://github.com/pbakaus/impeccable) by Paul Bakaus. It keeps the commands and workflow, then adds Congo wherever real source helps. [See what changes](#what-congo-adds).
 
 ## The difference is where the work starts
 
@@ -23,7 +23,8 @@ Impeccable works here exactly as it does upstream. The fork adds access to [Cong
 - **Real starting points.** The agent can find apps built around the same core job, install their source into a scratch project, and show the product adapted onto each one before you choose a direction.
 - **The same Impeccable process.** Once you pick an app, the agent adapts it to your product and `DESIGN.md`, then runs Impeccable's critique, audit, responsive, polish, and documentation passes.
 - **Evidence beyond the first screen.** Congo also feeds planning, live-mode alternatives, direct edits, critique comparisons, and design handbooks.
-- **No new commands.** Use Impeccable exactly as before. The agent reaches for Congo when real source would improve the work.
+- **A visual workspace.** Type `/congo` (`$congo` in Codex) to start a new app or redesign one: the workspace shows your AI's alternatives as running code, the Congo library, your saved designs, live editing and your running app. Your own AI does the work.
+- **Every Impeccable command still works.** Use Impeccable exactly as before. The agent reaches for Congo when real source would improve the work.
 
 The instructions live in [skill/reference/congo.md](skill/reference/congo.md).
 
@@ -34,9 +35,9 @@ The instructions live in [skill/reference/congo.md](skill/reference/congo.md).
 Clone the fork, copy the skill folder for your coding tool into your project, and remove any other copy of Impeccable that your agent loads:
 
 ```bash
-git clone https://github.com/caparsons0220/Congo-x-Impeccable.git
+git clone https://github.com/Chrisbuildsss/congo-workspace.git
 mkdir -p your-project/.agents/skills
-cp -R Congo-x-Impeccable/.agents/skills/impeccable your-project/.agents/skills/
+cp -R congo-workspace/.agents/skills/impeccable congo-workspace/.agents/skills/congo your-project/.agents/skills/
 ```
 
 Use `.claude`, `.cursor`, or the matching harness folder from the [manual installation table](#manual-copy-no-node-required) when installing for another tool. Reload your tool, then run `/impeccable init` (`$impeccable init` on Codex).

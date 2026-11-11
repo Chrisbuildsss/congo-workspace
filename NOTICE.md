@@ -10,9 +10,9 @@ The `skill/reference/ios.md` and `skill/reference/android.md` platform reference
 **Original license:** MIT
 **Author:** ehmo
 
-## Congo X Impeccable
+## Congo Workspace
 
-This repository is Congo X Impeccable, a fork of Impeccable (https://github.com/pbakaus/impeccable, Apache 2.0) changed by Congo (https://buildwithcongo.com) in these files: `skill/reference/congo.md` (added), `skill/SKILL.src.md`, `skill/reference/new-work.md`, `skill/reference/live.md`, `README.md`, `NOTICE.md`, `docs/images/readme-without-congo.png` (added), `docs/images/readme-with-congo.png` (added), `tests/congo-reference.test.mjs` (added), `scripts/test-suites.mjs`, and the generated skill folders built from them (`.claude/`, `.agents/`, `plugin/` and the other harness folders).
+This repository is Congo Workspace, a fork of Impeccable (https://github.com/pbakaus/impeccable, Apache 2.0) changed by Congo (https://buildwithcongo.com) in these files: `skill/reference/congo.md` (added), `skill/SKILL.src.md`, `skill/reference/new-work.md`, `skill/reference/live.md`, `README.md`, `NOTICE.md`, `docs/images/readme-without-congo.png` (added), `docs/images/readme-with-congo.png` (added), `tests/congo-reference.test.mjs` (added), `scripts/test-suites.mjs`, and the generated skill folders built from them (`.claude/`, `.agents/`, `plugin/` and the other harness folders).
 
 ### Local workspace V1 modifications
 

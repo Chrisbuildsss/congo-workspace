@@ -30,7 +30,7 @@ export function AboutModal({
           Built on <a href="https://impeccable.style" target="_blank" rel="noopener noreferrer">Impeccable</a>{" "}
           by Paul Bakaus (Apache License 2.0). Its design commands, live editor and request
           handoff run underneath every action here, unchanged. This workspace is part of
-          Congo X Impeccable, a modified version whose changes are listed in NOTICE.md.
+          Congo Workspace, a modified version whose changes are listed in NOTICE.md.
         </p>
         <p className="about-fine">
           Inter by Rasmus Andersson (SIL Open Font License 1.1). Dependency notices ship with

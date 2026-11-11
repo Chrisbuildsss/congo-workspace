@@ -9,6 +9,9 @@ import { layout } from './paths.mjs';
 import { Store, THEMES, VIEWS, writeJsonAtomic } from './store.mjs';
 import { helperStatus } from './live.mjs';
 import { createCatalog } from './catalog.mjs';
+import { ensureHelper, findLauncher, followEvents, postSteer, prepareArea, referenceDir } from './impeccable.mjs';
+import { helperInfo } from './live.mjs';
+import { buildRequest, describeAction, newId, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
 
 export const PROTOCOL = 1;
 export const VERSION = '0.1.0';
@@ -146,7 +149,7 @@ function appName(appPath) {
   return path.basename(appPath);
 }
 
-export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl }) {
+export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl, bootHelper = !env.CONGO_WORKSPACE_NO_HELPER }) {
   const files = layout(root);
   for (const dir of [files.area, files.designs, files.requests, files.sources]) fs.mkdirSync(dir, { recursive: true });
   const store = new Store(files.state);
@@ -166,14 +169,37 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   };
 
   const activeApp = () => store.get().apps.find((app) => app.id === store.get().activeAppId) || null;
+  const launcher = findLauncher(env);
+  const protocolFile = path.resolve(uiDir, '..', '..', '..', 'reference', 'workspace.md');
+  const impeccableReference = referenceDir(launcher);
+  prepareArea(files.area);
 
-  async function status() {
+  // Connection: the AI is "listening" while its live-poll is parked on a
+  // helper, and stays "connected" for a while between events while it works.
+  const CONNECTED_GRACE_MS = 15 * 60 * 1000;
+  const live = { area: { running: false, agentPolling: false }, app: { running: false, agentPolling: false }, lastPollAt: 0, lastVia: null, helperError: null };
+
+  async function refreshLive() {
     const app = activeApp();
-    const [areaHelper, appHelper] = await Promise.all([
+    const [area, appHelper] = await Promise.all([
       helperStatus(files.area),
       app ? helperStatus(app.path) : Promise.resolve({ running: false, agentPolling: false }),
     ]);
-    const connected = areaHelper.agentPolling || appHelper.agentPolling;
+    live.area = area;
+    live.app = appHelper;
+    if (area.agentPolling || appHelper.agentPolling) {
+      live.lastPollAt = Date.now();
+      live.lastVia = area.agentPolling ? 'workspace' : 'app';
+    }
+  }
+
+  async function status() {
+    await refreshLive();
+    const app = activeApp();
+    const listening = live.area.agentPolling || live.app.agentPolling;
+    const anyHelper = live.area.running || live.app.running;
+    const connected = listening || (anyHelper && Date.now() - live.lastPollAt < CONNECTED_GRACE_MS);
+    const pending = Object.values(store.get().requests).filter((r) => r.status === 'sent').length;
     return {
       protocol: PROTOCOL,
       version: VERSION,
@@ -181,15 +207,25 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       contentOrigin: `http://127.0.0.1:${servedContentPort}`,
       ai: {
         connected,
-        via: areaHelper.agentPolling ? 'workspace' : appHelper.agentPolling ? 'app' : null,
-        workspaceHelper: areaHelper.running,
+        listening,
+        via: listening ? (live.area.agentPolling ? 'workspace' : 'app') : connected ? live.lastVia : null,
+        workspaceHelper: live.area.running,
+        impeccable: Boolean(launcher),
+        pending,
+        error: live.helperError,
       },
-      app: app ? { ...app, helper: appHelper.running } : null,
+      app: app ? { ...app, helper: live.app.running } : null,
     };
   }
 
   function publicState() {
     const s = store.get();
+    const requests = Object.values(s.requests)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, 100)
+      .map(({ id, type, status: st, composeId, designId, action, createdAt, outputs, message }) => ({
+        id, type, status: st, composeId, designId, action, createdAt, outputs, message,
+      }));
     return {
       settings: s.settings,
       view: s.view,
@@ -198,7 +234,223 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       composes: s.composes,
       designs: s.designs,
       projects: s.projects,
+      requests,
     };
+  }
+
+  // --- requests to the user's AI ------------------------------------------
+
+  async function helperForRequests() {
+    try {
+      const info = await ensureHelper(files.area, launcher, root);
+      live.helperError = null;
+      return info;
+    } catch (error) {
+      live.helperError = error.message;
+      throw error;
+    }
+  }
+
+  function composeOf(s, designId) {
+    return s.composes.find((c) => c.designIds.includes(designId)) ?? null;
+  }
+
+  function newCompose(s, title, appId) {
+    const compose = {
+      id: newId(),
+      title: title.slice(0, 80) || 'New design',
+      prompt: '',
+      status: 'draft',
+      designIds: [],
+      messages: [],
+      appId: appId ?? s.activeAppId ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    s.composes.unshift(compose);
+    return compose;
+  }
+
+  function saveAttachment(id, attachment) {
+    if (!attachment) return null;
+    const match = /^data:(image\/(png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(attachment.dataUrl ?? '');
+    if (!match) throw Object.assign(new Error('Attach a PNG, JPEG, WebP or GIF image'), { status: 400 });
+    const ext = match[2] === 'jpeg' ? 'jpg' : match[2];
+    const file = path.join(files.requests, `${id}-reference.${ext}`);
+    fs.writeFileSync(file, Buffer.from(match[3], 'base64'));
+    return { file, name: String(attachment.name ?? `reference.${ext}`).slice(0, 120) };
+  }
+
+  async function createRequest(body) {
+    const type = body.type;
+    if (!['compose', 'tweak', 'build', 'library'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
+    const id = newId();
+    const s = store.get();
+    let compose = null;
+    let design = null;
+    let action = null;
+    let item = null;
+    let text = null;
+    let userText = '';
+
+    if (type === 'compose') {
+      compose = s.composes.find((c) => c.id === body.composeId);
+      if (!compose) throw Object.assign(new Error('Compose not found'), { status: 404 });
+      text = String(body.text ?? '').trim().slice(0, 4000);
+      if (!text && !body.attachment) throw Object.assign(new Error('Describe what you want first'), { status: 400 });
+      userText = text || 'Use the attached image';
+    } else if (type === 'tweak' || type === 'build') {
+      design = s.designs[body.designId];
+      if (!design || !design.local) throw Object.assign(new Error('Design not found in this workspace'), { status: 404 });
+      if (type === 'tweak') {
+        action = describeAction(String(body.action ?? ''));
+        if (!action) throw Object.assign(new Error('Unknown action'), { status: 400 });
+        userText = `${action.label}: ${design.title}`;
+      } else {
+        userText = `Build this: ${design.title}`;
+      }
+      compose = s.composes.find((c) => c.id === body.composeId) ?? composeOf(s, design.id);
+    } else if (type === 'library') {
+      const raw = body.item ?? {};
+      if (!['screen', 'template', 'app'].includes(raw.kind) || typeof raw.id !== 'string') {
+        throw Object.assign(new Error('Unknown library item'), { status: 400 });
+      }
+      item = {
+        kind: raw.kind,
+        id: raw.id.slice(0, 200),
+        version: typeof raw.version === 'string' ? raw.version.slice(0, 200) : null,
+        app: typeof raw.app === 'string' ? raw.app.slice(0, 120) : null,
+        title: String(raw.title ?? raw.id).slice(0, 200),
+        preview: typeof raw.preview === 'string' && /^https:\/\//.test(raw.preview) ? raw.preview : null,
+      };
+      if (body.action && body.action !== 'use') {
+        action = describeAction(String(body.action));
+        if (!action) throw Object.assign(new Error('Unknown action'), { status: 400 });
+      }
+      userText = `${action ? action.label : 'Use this'}: ${item.title}${item.app ? ` (${item.app})` : ''}`;
+    }
+
+    const info = await helperForRequests();
+    const attachment = saveAttachment(id, body.attachment);
+
+    const result = store.update((state) => {
+      let target = compose ? state.composes.find((c) => c.id === compose.id) : null;
+      if (!target) target = newCompose(state, type === 'library' ? item.title : userText, body.appId);
+      if (type === 'compose' && (target.title === 'New design' || !target.title)) target.title = text.split(/[.!?\n]/)[0].slice(0, 60) || 'New design';
+      if (body.appId === null || state.apps.some((a) => a.id === body.appId)) target.appId = body.appId;
+      target.messages.push({ id: `m-${id}`, role: 'user', text: userText, at: new Date().toISOString(), requestId: id });
+      if (type === 'compose') target.prompt = text;
+      target.status = 'waiting';
+      const app = state.apps.find((a) => a.id === target.appId) ?? null;
+      const request = buildRequest({
+        type,
+        id,
+        files,
+        reference: protocolFile,
+        impeccableReference,
+        app,
+        compose: target,
+        text,
+        attachment,
+        design: design ? { ...design, dir: design.local ? path.join(files.designs, design.id) : null, entry: design.local ? path.join(files.designs, design.id, 'index.html') : null } : null,
+        action,
+        item,
+      });
+      state.requests[id] = {
+        id,
+        type,
+        status: 'sent',
+        composeId: target.id,
+        designId: design?.id ?? null,
+        action: action?.key ?? (type === 'library' ? 'use' : null),
+        item,
+        outputs: request.outputs.map((o) => o.id),
+        createdAt: request.createdAt,
+        message: null,
+      };
+      return { request, compose: target };
+    });
+    const file = writeRequest(files, result.request);
+    try {
+      await postSteer(info, { id, message: steerMessage(result.request, file) });
+    } catch (error) {
+      store.update((state) => {
+        state.requests[id].status = 'error';
+        state.requests[id].message = error.message;
+        const target = state.composes.find((c) => c.id === result.compose.id);
+        if (target) target.status = 'complete';
+      });
+      throw error;
+    }
+    return { request: store.get().requests[id], composeId: result.compose.id };
+  }
+
+  function settleCompose(state, composeId) {
+    const target = state.composes.find((c) => c.id === composeId);
+    if (!target) return;
+    const open = Object.values(state.requests).some((r) => r.composeId === composeId && r.status === 'sent');
+    target.status = open ? 'waiting' : 'complete';
+  }
+
+  function onHelperEvent(event) {
+    if (event.type === 'agent_polling') {
+      if (event.connected) live.lastPollAt = Date.now();
+      return;
+    }
+    if (!['steer_done', 'error'].includes(event.type) || !event.id) return;
+    const request = store.get().requests[event.id];
+    if (!request || request.status !== 'sent') return;
+    store.update((state) => {
+      const r = state.requests[event.id];
+      r.status = event.type === 'error' ? 'error' : 'done';
+      r.message = typeof event.message === 'string' ? event.message.slice(0, 2000) : null;
+      r.doneAt = new Date().toISOString();
+      const target = state.composes.find((c) => c.id === r.composeId);
+      if (target) {
+        const text = event.type === 'error'
+          ? `Your AI could not finish this: ${r.message ?? 'no reason given'}`
+          : r.message || 'Done.';
+        target.messages.push({ id: `a-${r.id}`, role: 'assistant', text, at: r.doneAt, requestId: r.id });
+      }
+      settleCompose(state, r.composeId);
+    });
+    live.lastPollAt = Date.now();
+  }
+
+  function registerDesigns() {
+    const found = scanDesigns(files);
+    const s = store.get();
+    const fresh = found.filter((d) => {
+      const known = s.designs[d.id];
+      return !known || known.title !== d.meta.title || known.summary !== (d.meta.summary ?? undefined) || known.src !== d.src;
+    });
+    if (!fresh.length) return;
+    store.update((state) => {
+      for (const d of fresh) {
+        const requestId = typeof d.meta.request === 'string' ? d.meta.request : d.id.split('-')[0];
+        const request = state.requests[requestId] ?? null;
+        const parent = request?.designId ? state.designs[request.designId] : null;
+        const existing = state.designs[d.id];
+        state.designs[d.id] = {
+          ...(existing ?? {}),
+          id: d.id,
+          local: true,
+          title: d.meta.title.slice(0, 120),
+          summary: typeof d.meta.summary === 'string' ? d.meta.summary.slice(0, 400) : undefined,
+          format: d.meta.format === 'mobile' ? 'mobile' : 'desktop',
+          src: d.src,
+          requestId: request ? requestId : null,
+          parentId: parent?.id ?? existing?.parentId,
+          action: request?.action ?? existing?.action,
+          source: d.meta.source ?? (request?.item ? { kind: request.item.kind, id: request.item.id, version: request.item.version ?? undefined, app: request.item.app ?? undefined } : existing?.source),
+          appId: existing?.appId ?? (request ? state.composes.find((c) => c.id === request.composeId)?.appId ?? null : null),
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+        };
+        if (!existing && request) {
+          const target = state.composes.find((c) => c.id === request.composeId);
+          if (target && !target.designIds.includes(d.id)) target.designIds.push(d.id);
+        }
+      }
+    });
   }
 
   function attachApp(appPath) {
@@ -234,7 +486,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       return send(res, 200, await catalog.screens(Object.fromEntries(url.searchParams)));
     }
     if (req.method !== 'POST') return send(res, 404, { error: 'Not found' });
-    const body = await readBody(req);
+    const body = await readBody(req, url.pathname === '/api/requests' ? 12 * 1024 * 1024 : 256 * 1024);
     switch (url.pathname) {
       case '/api/settings': {
         if (!THEMES.includes(body.theme)) return send(res, 400, { error: 'Choose system, light or dark' });
@@ -245,6 +497,23 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         if (!VIEWS.includes(body.view)) return send(res, 400, { error: 'Unknown view' });
         store.update((s) => { s.view = body.view; });
         return send(res, 200, { ok: true });
+      }
+      case '/api/requests': {
+        const created = await createRequest(body);
+        return send(res, 200, { ...created, state: publicState() });
+      }
+      case '/api/connect': {
+        // Used by the Redesign skill: make sure the helper runs, attach the
+        // app if given, and tell the AI where to poll.
+        if (typeof body.project === 'string' && body.project) attachApp(body.project);
+        const info = await helperForRequests();
+        return send(res, 200, {
+          area: files.area,
+          protocol: protocolFile,
+          helper: { port: info.port },
+          poll: { cwd: files.area, args: ['live-poll'] },
+          app: activeApp(),
+        });
       }
       case '/api/apps': {
         const app = attachApp(body.path);
@@ -328,6 +597,12 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       if (url.pathname.startsWith('/designs/')) {
         let file = fileInside(files.designs, url.pathname.slice('/designs'.length));
         if (file && fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
+        // Cards show the design without Impeccable's live editor; Edit (?edit=1)
+        // serves the page exactly as Impeccable injected it.
+        if (file && path.extname(file).toLowerCase() === '.html' && url.searchParams.get('edit') !== '1' && fs.existsSync(file)) {
+          const html = fs.readFileSync(file, 'utf8').replace(/<!-- impeccable-live-start -->[\s\S]*?<!-- impeccable-live-end -->\s*/g, '');
+          return send(res, 200, html, { 'Content-Type': MIME['.html'] });
+        }
         if (file && serveFile(res, file)) return undefined;
       }
       return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -352,6 +627,17 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   };
   writeJsonAtomic(files.server, record);
 
+  // Background: designs the AI writes become cards; helper replies become
+  // conversation; the helper boots so the AI can connect right away.
+  const timers = [
+    setInterval(() => { try { registerDesigns(); } catch (error) { log(`scan: ${error.message}`); } }, 1500),
+    setInterval(() => { refreshLive().catch(() => {}); }, 3000),
+  ];
+  const unfollow = followEvents(() => helperInfo(files.area), onHelperEvent, log);
+  if (bootHelper && launcher) {
+    helperForRequests().catch((error) => log(`helper: ${error.message}`));
+  }
+
   let resolveStopped;
   const stopped = new Promise((resolve) => { resolveStopped = resolve; });
   function stop() {
@@ -361,6 +647,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     if (current?.pid === process.pid) {
       try { fs.rmSync(files.server); } catch {}
     }
+    for (const timer of timers) clearInterval(timer);
+    unfollow();
     let pending = 2;
     const done = () => { if (--pending === 0) resolveStopped(); };
     ui.close(done);

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Congo workspace launcher. Opens (or reuses) the local workspace server.
 //   node workspace.mjs open [--project PATH] [--view compose|library|projects|live] [--no-browser] [--json]
+//   node workspace.mjs connect [--project PATH] [--browser] [--json]   (for the user's AI)
 //   node workspace.mjs status [--json]
 //   node workspace.mjs stop
 //   node workspace.mjs serve [--port N]      (foreground; `open` starts this detached)
@@ -126,8 +127,20 @@ async function main() {
     return print(args, { stopped: Boolean(record) }, record ? 'Congo workspace stopped.' : 'Congo workspace was not running.');
   }
 
+  if (command === 'connect') {
+    // For the user's AI: open or reuse the workspace, start Impeccable's live
+    // helper on its working area, and say where to run `live-poll`.
+    register(files);
+    const record = await ensure(files, Number(args.port) || 0);
+    const connected = await request(record, '/api/connect', typeof args.project === 'string' ? { project: args.project } : {});
+    const url = `http://127.0.0.1:${record.port}/compose#t=${record.token}`;
+    if (args.browser === true || args['open-browser']) openBrowser(url);
+    return print(args, { url, ...connected, next: `Run Impeccable's live-poll with ${connected.area} as the working directory, and keep polling.` },
+      `Congo workspace: ${url}\nWorking area: ${connected.area}\nNext: run Impeccable's live-poll from the working area and keep polling.`);
+  }
+
   if (command !== 'open') {
-    console.error(`Unknown command: ${command}. Use open, status, stop or serve.`);
+    console.error(`Unknown command: ${command}. Use open, connect, status, stop or serve.`);
     process.exitCode = 2;
     return;
   }

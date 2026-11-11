@@ -17,7 +17,7 @@ const uiDir = path.join(tmp, 'ui');
 fs.mkdirSync(uiDir, { recursive: true });
 fs.writeFileSync(path.join(uiDir, 'index.html'), '<!doctype html><title>ui</title><div id="root"></div>');
 
-const server = await startWorkspaceServer({ root: path.join(tmp, 'home'), uiDir, port: 4970, token: 'test-token' });
+const server = await startWorkspaceServer({ root: path.join(tmp, 'home'), uiDir, port: 4970, token: 'test-token', bootHelper: false, env: { ...process.env, IMPECCABLE_LAUNCHER: path.join(tmp, 'no-impeccable') } });
 const base = `http://127.0.0.1:${server.record.port}`;
 const content = `http://127.0.0.1:${server.record.contentPort}`;
 after(async () => {
@@ -27,7 +27,7 @@ after(async () => {
 });
 
 function launcherEnv() {
-  return { ...process.env, CONGO_WORKSPACE_HOME: path.join(tmp, 'launcher-home') };
+  return { ...process.env, CONGO_WORKSPACE_HOME: path.join(tmp, 'launcher-home'), CONGO_WORKSPACE_NO_HELPER: '1' };
 }
 
 async function api(route, body, token = 'test-token') {

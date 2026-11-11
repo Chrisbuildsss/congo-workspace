@@ -5,7 +5,7 @@ The workspace sends the user's actions to you through Impeccable's live helper a
 ## Connect
 
 1. `node {{scripts_path}}/workspace.mjs connect [--project <the user's app folder>]`. It opens or reuses the workspace, starts Impeccable's live helper on the workspace's working area, and prints JSON with `area` (the working area) and `url` (show it to the user if they have not opened it).
-2. Run Impeccable's poll from `area` as the working directory: `<impeccable skill>/scripts/impeccable live-poll` (`impeccable.cmd` on a Windows shell without `sh`). Follow the harness policy in Impeccable's `reference/live.md`: Claude Code runs the poll as a background task, Codex holds it in a foreground session, Cursor uses a background terminal. Never pass a short `--timeout`. Poll again right after every event and every reply.
+2. Run Impeccable's poll from `area` as the working directory with the launcher `connect` printed: `<poll launcher> live-poll` (`poll.windowsLauncher` on a Windows shell without `sh`). Follow the harness policy in Impeccable's `reference/live.md`: Claude Code runs the poll as a background task, Codex holds it in a foreground session, Cursor uses a background terminal. Never pass a short `--timeout`. Poll again right after every event and every reply.
 3. A steer whose message starts with `Congo workspace request <id>` is a workspace request: handle it below. Every other event (`generate`, `accept`, `discard`, `prefetch`, `exit`, ...) is Impeccable's live editor: handle it exactly as `live.md` says.
 
 The workspace shows the user that you are connected while your poll is parked on the helper. While you work on a request it shows the request as in progress.

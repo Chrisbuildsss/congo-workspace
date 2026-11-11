@@ -136,8 +136,8 @@ async function main() {
     const connected = await request(record, '/api/connect', typeof args.project === 'string' ? { project: args.project } : {});
     const url = `http://127.0.0.1:${record.port}/compose#t=${record.token}`;
     if (args.browser === true || args['open-browser']) openBrowser(url);
-    return print(args, { url, ...connected, next: `Run Impeccable's live-poll with ${connected.area} as the working directory, and keep polling.` },
-      `Congo workspace: ${url}\nWorking area: ${connected.area}\nNext: run Impeccable's live-poll from the working area and keep polling.`);
+    return print(args, { url, ...connected, next: `From ${connected.area}, run ${connected.poll?.launcher ?? "Impeccable's launcher"} live-poll and keep polling.` },
+      `Congo workspace: ${url}\nWorking area: ${connected.area}\nNext: from the working area, run ${connected.poll?.launcher ?? "Impeccable's launcher"} live-poll and keep polling.`);
   }
 
   if (command === 'request') {

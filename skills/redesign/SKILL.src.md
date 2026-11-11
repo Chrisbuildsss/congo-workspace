@@ -8,6 +8,8 @@ argument-hint: "[screen, page, or app request]"
 
 Redesign runs in the local Congo workspace: the user sees and compares your alternatives as running code on Compose, and every action they take there comes back to you. You are the only AI. This chat stays the conversation.
 
+`{{scripts_path}}` below is this skill's `scripts` folder: resolve it from the directory that contains this SKILL.md (the base directory the runtime reports for the skill), and use the written path only when none is reported. Keep the working directory at the user's project.
+
 ## Start
 
 1. Resolve what to redesign from this conversation and the code: the app (its folder), the page or route, and the intent. If the app, page or intent is missing, ask here in one short question before going on. A narrow request (one section, one page) stays narrow; "redesign the app" means one coherent direction across the affected screens and shared components.
@@ -17,11 +19,11 @@ Redesign runs in the local Congo workspace: the user sees and compares your alte
    node {{scripts_path}}/workspace.mjs connect --project <app folder> --browser
    ```
 
-   Show the user the `url` it prints. It starts Impeccable's live helper on the workspace's working area and prints that `area`.
+   Show the user the `url` it prints. It starts Impeccable's live helper on the workspace's working area and prints that `area` and the poll launcher (with `--json`: `poll.launcher`, and `poll.windowsLauncher` for a Windows shell without `sh`).
 3. Start Impeccable's poll from `area`, following the harness policy in Impeccable's `reference/live.md` (Claude Code: a background task; Codex: a foreground session; Cursor: a background terminal):
 
    ```sh
-   <impeccable skill>/scripts/impeccable live-poll
+   cd <area> && <poll launcher> live-poll
    ```
 
 4. Put the request into Compose, in the user's words:

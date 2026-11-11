@@ -1,0 +1,34 @@
+[
+  {
+    "route": "/compose/5dd6f2fd",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\v1-working\\compose-5dd6f2fd-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose/5dd6f2fd",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\v1-working\\compose-5dd6f2fd-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose/5dd6f2fd",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\v1-working\\compose-5dd6f2fd-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/compose/5dd6f2fd",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\v1-working\\compose-5dd6f2fd-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  }
+]

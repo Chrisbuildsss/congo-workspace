@@ -72,6 +72,10 @@ function range(start, count) {
   return Array.from({ length: count }, (_, i) => start + i);
 }
 
+// Designs send their address only to their own origin (the content port), so
+// root-relative assets can be found inside the design that asked for them.
+const DESIGN_HEADERS = { 'Referrer-Policy': 'same-origin' };
+
 function send(res, status, body, headers = {}) {
   const payload = typeof body === 'string' || Buffer.isBuffer(body) ? body : JSON.stringify(body);
   res.writeHead(status, {
@@ -713,7 +717,13 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
           area: files.area,
           protocol: protocolFile,
           helper: { port: info.port },
-          poll: { cwd: files.area, args: ['live-poll'] },
+          poll: {
+            cwd: files.area,
+            args: ['live-poll'],
+            // The Impeccable launcher this workspace runs (sh, and the Windows twin).
+            launcher: launcher ? path.join(path.dirname(launcher), 'impeccable') : null,
+            windowsLauncher: launcher ? path.join(path.dirname(launcher), 'impeccable.cmd') : null,
+          },
           app: activeApp(),
         });
       }
@@ -803,16 +813,16 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         // serves the page exactly as Impeccable injected it.
         if (file && path.extname(file).toLowerCase() === '.html' && url.searchParams.get('edit') !== '1' && fs.existsSync(file)) {
           const html = fs.readFileSync(file, 'utf8').replace(/<!-- impeccable-live-start -->[\s\S]*?<!-- impeccable-live-end -->\s*/g, '');
-          return send(res, 200, html, { 'Content-Type': MIME['.html'] });
+          return send(res, 200, html, { 'Content-Type': MIME['.html'], ...DESIGN_HEADERS });
         }
-        if (file && serveFile(res, file)) return undefined;
+        if (file && serveFile(res, file, DESIGN_HEADERS)) return undefined;
       } else {
         // A design built from an app often asks for its assets from the site
         // root (/assets/logo.svg). Resolve those inside the design that asked,
         // named by the page or stylesheet that made the request.
         const design = designFromReferer(req.headers.referer, servedContentPort);
         const file = design && fileInside(path.join(files.designs, design), url.pathname);
-        if (file && path.extname(file) && serveFile(res, file)) return undefined;
+        if (file && path.extname(file) && serveFile(res, file, DESIGN_HEADERS)) return undefined;
       }
       return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
     } catch (error) {

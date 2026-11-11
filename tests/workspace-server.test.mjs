@@ -91,6 +91,9 @@ test('root-relative assets resolve inside the design that asked for them', async
   fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'index.html'), '<img src="/assets/mark.svg">');
   fs.writeFileSync(path.join(dir, 'assets', 'mark.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  const page = await fetch(`${content}/designs/d2/`);
+  assert.equal(page.headers.get('referrer-policy'), 'same-origin', 'browsers name the design on its own origin only');
+  assert.equal((await fetch(`${base}/api/ping`)).headers.get('referrer-policy'), 'no-referrer');
   const fromDesign = { headers: { Referer: `${content}/designs/d2/index.html` } };
   const asset = await fetch(`${content}/assets/mark.svg`, fromDesign);
   assert.equal(asset.status, 200);

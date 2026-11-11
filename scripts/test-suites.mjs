@@ -98,6 +98,7 @@ export const SUITES = {
           'tests/redesign.test.mjs',
           'tests/workspace-server.test.mjs',
           'tests/workspace-catalog.test.mjs',
+          'tests/workspace-requests.test.mjs',
         ],
       },
     ],

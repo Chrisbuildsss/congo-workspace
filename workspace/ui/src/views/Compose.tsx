@@ -1,8 +1,16 @@
 import { useState, type FormEvent } from "react";
 import Composer, { type ComposerValues } from "../components/Composer";
-import DesignCard, { type CardAction } from "../components/DesignCard";
+import DesignCard, { type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
 import { EllipsisIcon, PanelIcon, SearchIcon } from "../Icons";
-import type { AppRef, Compose, Design } from "../types";
+import type { AppRef, Compose, Design, WorkspaceRequest } from "../types";
+
+const BUILD_THIS: QuickAction = { key: "build", label: "Build this", icon: "↗" };
+
+const CARD_MENU: MenuItem[] = [
+  { key: "open", label: "Open design" },
+  { key: "preview", label: "Open in new tab" },
+  { key: "delete", label: "Delete design", danger: true },
+];
 import { useClickOutside } from "../components/Ui";
 
 const suggestions = [
@@ -32,6 +40,7 @@ export default function ComposeView({
   prompt,
   setPrompt,
   onSend,
+  requests = [],
   onAppChange,
   onOpenDesign,
   onCardAction,
@@ -52,6 +61,7 @@ export default function ComposeView({
   prompt: string;
   setPrompt: (prompt: string) => void;
   onSend: (values: ComposerValues) => void;
+  requests?: WorkspaceRequest[];
   onAppChange: (appId: string | null) => void;
   onOpenDesign: (design: Design) => void;
   onCardAction: (action: CardAction, design: Design) => void;
@@ -69,6 +79,10 @@ export default function ComposeView({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const optionsRef = useClickOutside<HTMLDivElement>(optionsOpen, () => setOptionsOpen(false));
   const waiting = compose.status === "waiting";
+  const open = requests.filter((r) => r.status === "sent");
+  // One placeholder per design your AI is still writing.
+  const expected = open.reduce((sum, r) => sum + r.outputs.filter((id) => !compose.designIds.includes(id)).length, 0);
+  const actionsNote = aiConnected ? undefined : "Needs a connected AI";
 
   const handleRename = (event: FormEvent) => {
     event.preventDefault();
@@ -219,10 +233,14 @@ export default function ComposeView({
               <div className="assistant-response generating-response">
                 <div className="assistant-status is-loading">
                   <span><SearchIcon size={16} /></span>
-                  Sent to your AI
+                  {open.length > 1 ? `${open.length} requests with your AI` : "Sent to your AI"}
                   <i />
                 </div>
-                <p>Your AI picks this up in its own chat. Alternatives appear here as they are ready.</p>
+                <p>
+                  {open.some((r) => r.type === "build")
+                    ? "Your AI is applying a design to your project. Follow along in its chat."
+                    : "Your AI picks this up in its own chat. Designs appear here as they are ready."}
+                </p>
               </div>
             ) : null}
           </div>
@@ -260,13 +278,17 @@ export default function ComposeView({
                   selected={selected.has(design.id)}
                   onToggleSelected={() => onToggleSelected(design)}
                   showAuthor={false}
+                  primary={BUILD_THIS}
+                  showMore
+                  menuItems={CARD_MENU}
+                  actionsDisabledNote={actionsNote}
                 />
               ))}
-              {waiting ? [0, 1].map((index) => <GeneratingCard key={index} index={index} />) : null}
+              {Array.from({ length: expected }, (_, index) => <GeneratingCard key={index} index={index} />)}
             </div>
           ) : waiting ? (
             <div className="chat-design-grid">
-              {[0, 1, 2, 3].map((index) => (
+              {Array.from({ length: Math.max(expected, 1) }, (_, index) => (
                 <GeneratingCard key={index} index={index} />
               ))}
             </div>

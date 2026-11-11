@@ -185,7 +185,7 @@ export default function Composer({
             <ChevronDownIcon size={10} />
           </button>
           {appOpen ? (
-            <div className="composer-popover visibility-popover">
+            <div className="composer-popover quality-popover">
               {[null, ...apps].map((item) => (
                 <button
                   type="button"

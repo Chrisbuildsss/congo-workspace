@@ -26,6 +26,10 @@ export interface Design {
   action?: string;
   source?: DesignSource;
   createdAt?: string;
+  /** True for designs your AI wrote into the workspace's working area. */
+  local?: boolean;
+  requestId?: string | null;
+  appId?: string | null;
 }
 
 export interface LibraryApp {
@@ -103,6 +107,19 @@ export interface WorkspaceState {
   composes: Compose[];
   designs: Record<string, Design>;
   projects: Project[];
+  requests: WorkspaceRequest[];
+}
+
+export interface WorkspaceRequest {
+  id: string;
+  type: "compose" | "tweak" | "build" | "library";
+  status: "sent" | "done" | "error";
+  composeId: string;
+  designId: string | null;
+  action: string | null;
+  createdAt: string;
+  outputs: string[];
+  message: string | null;
 }
 
 export interface WorkspaceStatus {
@@ -110,6 +127,14 @@ export interface WorkspaceStatus {
   version: string;
   view: ViewName;
   contentOrigin: string;
-  ai: { connected: boolean; via: "workspace" | "app" | null; workspaceHelper: boolean };
+  ai: {
+    connected: boolean;
+    listening: boolean;
+    via: "workspace" | "app" | null;
+    workspaceHelper: boolean;
+    impeccable: boolean;
+    pending: number;
+    error: string | null;
+  };
   app: (AppRef & { helper: boolean }) | null;
 }

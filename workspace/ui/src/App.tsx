@@ -4,7 +4,7 @@ import { AboutModal } from "./components/AppModals";
 import { Sidebar } from "./components/AppShell";
 import type { CardAction } from "./components/DesignCard";
 import { Toast } from "./components/Ui";
-import { ContentOrigin } from "./DesignFrame";
+import { ContentOrigin, designUrl } from "./DesignFrame";
 import { LogoMark } from "./Icons";
 import { api, getState, getStatus, token } from "./api";
 import type { Compose, Design, ThemeSetting, ViewName, WorkspaceState, WorkspaceStatus } from "./types";
@@ -48,6 +48,15 @@ function applyTheme(theme: ThemeSetting) {
   const root = document.documentElement;
   if (theme === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", theme);
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function NoToken() {
@@ -178,21 +187,78 @@ export default function App() {
     }
   };
 
-  const send = (_values: ComposerValues) => {
-    showToast(aiConnected ? "Sending to your AI arrives with Compose" : "Connect your AI first");
+  const sendRequest = async (body: Record<string, unknown>, openCompose = false) => {
+    try {
+      const result = await api<{ composeId: string; state: WorkspaceState }>("/api/requests", body);
+      setState(result.state);
+      if (openCompose) {
+        navigate({ name: "compose", id: result.composeId });
+        setChatOpen(true);
+      }
+      showToast("Sent to your AI");
+      return result;
+    } catch (error) {
+      showToast((error as Error).message);
+      return null;
+    }
+  };
+
+  const send = async (values: ComposerValues, composeId = activeCompose?.id) => {
+    if (!composeId) return;
+    if (!aiConnected) {
+      showToast("Connect your AI first");
+      return;
+    }
+    const attachment = values.attachment
+      ? { name: values.attachment.name, dataUrl: await fileToDataUrl(values.attachment.file) }
+      : undefined;
+    const result = await sendRequest({ type: "compose", composeId, text: values.text, appId: values.appId, attachment });
+    if (result) setChatPrompt("");
   };
 
   const handleCardAction = (action: CardAction, design: Design) => {
     if (action === "preview") {
-      if (design.previewUrl) window.open(design.previewUrl, "_blank", "noopener,noreferrer");
-      else showToast("No hosted preview for this item");
+      const url = design.previewUrl ?? (design.local ? designUrl(design, status?.contentOrigin ?? "") : null);
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+      else showToast("No preview for this item");
       return;
     }
     if (action === "open" || action === "edit") {
       setDetail({ design, context: activeCompose?.title ?? design.author });
       return;
     }
-    showToast(aiConnected ? "Sending actions to your AI arrives with Compose" : "Actions need a connected AI");
+    if (action === "delete") {
+      void api<WorkspaceState>("/api/designs/delete", { id: design.id })
+        .then((next) => {
+          setState(next);
+          if (detail?.design.id === design.id) setDetail(null);
+          showToast("Design removed");
+        })
+        .catch((error: Error) => showToast(error.message));
+      return;
+    }
+    if (!aiConnected) {
+      showToast("Actions need a connected AI");
+      return;
+    }
+    if (!design.local) {
+      // Library item: your AI fetches the source and adapts it outside your project.
+      const item = {
+        kind: design.source?.kind ?? "screen",
+        id: design.source?.id ?? design.id,
+        version: design.source?.version,
+        app: design.source?.app,
+        title: design.title,
+        preview: design.previewUrl ?? undefined,
+      };
+      void sendRequest({ type: "library", item, action, appId: state?.activeAppId ?? null }, true);
+      return;
+    }
+    if (action === "build") {
+      void sendRequest({ type: "build", designId: design.id, composeId: activeCompose?.id });
+      return;
+    }
+    void sendRequest({ type: "tweak", designId: design.id, action, composeId: activeCompose?.id });
   };
 
   const toggleSelected = (design: Design) =>
@@ -276,7 +342,8 @@ export default function App() {
               setChatOpen={setChatOpen}
               prompt={chatPrompt}
               setPrompt={setChatPrompt}
-              onSend={send}
+              onSend={(values) => void send(values)}
+              requests={state.requests.filter((r) => r.composeId === activeCompose.id)}
               onAppChange={(appId) => void updateCompose({ appId })}
               onOpenDesign={(design) => setDetail({ design, context: activeCompose.title })}
               onCardAction={handleCardAction}
@@ -302,9 +369,8 @@ export default function App() {
               onChange={setGlobalPrompt}
               onSubmit={async (values) => {
                 const compose = await createCompose(values.text.split(/[.!?\n]/)[0].slice(0, 40) || undefined);
-                setChatPrompt(values.text);
                 setGlobalPrompt("");
-                void compose;
+                await send(values, compose.id);
               }}
               placeholder="Ask your AI for designs..."
               apps={state?.apps ?? []}
@@ -328,7 +394,10 @@ export default function App() {
             }
             bookmarked={bookmarked.has(detail.design.id)}
             editDisabledReason={aiConnected ? undefined : "Edit needs a connected AI"}
-            openUrl={detail.design.previewUrl ?? null}
+            openUrl={
+              detail.design.previewUrl ??
+              (detail.design.local ? designUrl(detail.design, status?.contentOrigin ?? "") : null)
+            }
             onClose={() => setDetail(null)}
             onBookmark={() => showToast("Saving to Projects arrives with Projects")}
             onEdit={detail.design.src ? () => showToast("Editing arrives with the Edit step") : undefined}

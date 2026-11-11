@@ -502,6 +502,20 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         const created = await createRequest(body);
         return send(res, 200, { ...created, state: publicState() });
       }
+      case '/api/designs/delete': {
+        const design = store.get().designs[body.id];
+        if (!design) return send(res, 404, { error: 'Design not found' });
+        if (design.local && /^[a-z0-9][a-z0-9-]{0,63}$/i.test(design.id)) {
+          const dir = path.join(files.designs, design.id);
+          if (path.dirname(dir) === files.designs) fs.rmSync(dir, { recursive: true, force: true });
+        }
+        store.update((s) => {
+          delete s.designs[design.id];
+          for (const c of s.composes) c.designIds = c.designIds.filter((id) => id !== design.id);
+          for (const p of s.projects) p.designIds = p.designIds.filter((id) => id !== design.id);
+        });
+        return send(res, 200, publicState());
+      }
       case '/api/connect': {
         // Used by the Redesign skill: make sure the helper runs, attach the
         // app if given, and tell the AI where to poll.

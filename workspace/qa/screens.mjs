@@ -28,7 +28,7 @@ const sizes = [
 const schemes = ['light', 'dark'];
 
 fs.mkdirSync(out, { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 const results = [];
 try {
   for (const scheme of schemes) {
@@ -49,7 +49,10 @@ try {
         const [pathname, search = ''] = route.split('?');
         url.pathname = pathname;
         url.search = search ? `?${search}` : '';
-        await page.goto(url.href + hash, { waitUntil: 'networkidle' }).catch(() => {});
+        // The workspace polls its API, so the network never goes idle: wait for
+        // the page, then for the first images, then settle.
+        await page.goto(url.href + hash, { waitUntil: 'domcontentloaded' }).catch(() => {});
+        await page.waitForFunction(() => [...document.images].slice(0, 6).every((img) => img.complete), null, { timeout: 15000 }).catch(() => {});
         if (waitFor) await page.waitForSelector(waitFor, { timeout: 15000 }).catch(() => {});
         await page.waitForTimeout(settle);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);

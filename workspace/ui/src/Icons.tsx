@@ -198,6 +198,16 @@ export function SparkIcon(props: IconProps) {
   );
 }
 
+export function InfoIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="10" cy="10" r="6.75" stroke="currentColor" strokeWidth="1.35" />
+      <path d="M10 9.25v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="10" cy="6.6" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function PanelIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

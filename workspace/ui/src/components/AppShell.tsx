@@ -68,32 +68,38 @@ export function Sidebar({
   const connected = Boolean(status?.ai.connected);
   const aiLabel = status ? (connected ? "Connected" : "Not connected") : "Checking";
 
+  // Two tabs: Explore (the Library) and Prototypes. My app and Projects stay
+  // in the code, hidden.
   const nav = [
     {
-      key: "compose" as const,
-      label: "Compose",
-      icon: <ComposeIcon size={20} />,
-      action: onCompose,
-    },
-    {
       key: "library" as const,
-      label: "Library",
+      label: "Explore",
       icon: <LibraryIcon size={20} />,
       action: () => onNavigate("library"),
+      hidden: false,
+    },
+    {
+      key: "compose" as const,
+      label: "Prototypes",
+      icon: <ComposeIcon size={20} />,
+      action: onCompose,
+      hidden: false,
     },
     {
       key: "projects" as const,
       label: "Projects",
       icon: <ProjectsIcon size={20} />,
       action: () => onNavigate("projects"),
+      hidden: true,
     },
     {
       key: "live" as const,
-      label: "Live App",
+      label: "My app",
       icon: <LiveAppIcon size={20} />,
       action: () => onNavigate("live"),
+      hidden: true,
     },
-  ];
+  ].filter((item) => !item.hidden);
 
   return (
     <>

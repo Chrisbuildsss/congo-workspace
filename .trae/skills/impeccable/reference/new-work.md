@@ -28,7 +28,7 @@ Across modes, ask what success looks like, what must remain untouched, and what 
 
 ## 3. Choose the right amount of invention
 
-With Congo available, a new product, a new or replaced visual world, or a whole new surface starts from real apps: run the reference round in [congo.md](congo.md) before any roll below. An answer of `scratch`, Congo being unavailable, or no fitting app continues below unchanged.
+With Congo available, a new product, a new or replaced visual world, or a whole new surface starts from the closest real Congo app: follow "New products and whole surfaces" in [congo.md](congo.md) before any roll below. Congo being unavailable, no app that does a similar job, or a request for something from scratch continues below unchanged.
 
 ### Extend an existing surface
 

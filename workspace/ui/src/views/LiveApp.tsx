@@ -87,6 +87,7 @@ export default function LiveAppView({
   onAskAI,
   onEdit,
   showToast,
+  applying = null,
 }: {
   status: WorkspaceStatus | null;
   apps: AppRef[];
@@ -97,6 +98,8 @@ export default function LiveAppView({
   onAskAI: () => void;
   onEdit: () => void;
   showToast: (message: string) => void;
+  /** A Use this the AI is still carrying out, if any. */
+  applying?: string | null;
 }) {
   const [live, setLive] = useState<LiveState>({ app: null });
   const [attaching, setAttaching] = useState(false);
@@ -199,11 +202,17 @@ export default function LiveAppView({
           apps.length ? (
             <AppPicker apps={apps} activeId={activeAppId} onPick={onPickApp} onAttach={() => setAttaching(true)} />
           ) : (
-            <h1 className="app-topbar-title">Live App</h1>
+            <h1 className="app-topbar-title">My app</h1>
           )
         }
         right={right}
       />
+
+      {applying ? (
+        <div className="workspace-banner" role="status">
+          Your AI is putting “{applying}” into your app. Follow along in its chat; start the app here when it says it's done.
+        </div>
+      ) : null}
 
       {running ? (
         <div className="live-frame">

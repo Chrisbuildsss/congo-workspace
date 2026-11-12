@@ -21,7 +21,7 @@ const waitMs = Number(arg('wait-ms', 600000));
 const variant = Number(arg('variant', 2));
 const log = (step, extra = {}) => console.log(JSON.stringify({ step, at: new Date().toISOString(), ...extra }));
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const shot = async (name) => { if (shots) await page.screenshot({ path: path.join(shots, `${name}.png`) }); };

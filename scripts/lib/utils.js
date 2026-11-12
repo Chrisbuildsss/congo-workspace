@@ -346,7 +346,14 @@ export function readSourceFiles(rootDir) {
     payloads,
   });
 
-  const redesignDir = path.join(rootDir, 'skills', 'congo');
+  // The Congo skills: `congo`, plus its optional helpers (`congo-compete`,
+  // `congo-ideas`), each a folder under skills/ with a SKILL.src.md.
+  const congoRoot = path.join(rootDir, 'skills');
+  const congoNames = fs.existsSync(congoRoot)
+    ? fs.readdirSync(congoRoot).filter((n) => n === 'congo' || n.startsWith('congo-')).sort()
+    : [];
+  for (const congoName of congoNames) {
+  const redesignDir = path.join(congoRoot, congoName);
   const redesignFile = path.join(redesignDir, 'SKILL.src.md');
   if (fs.existsSync(redesignFile)) {
     const { frontmatter: fm, body: redesignBody } = parseFrontmatter(fs.readFileSync(redesignFile, 'utf8'));
@@ -357,6 +364,7 @@ export function readSourceFiles(rootDir) {
       body: redesignBody, filePath: redesignFile, agents: [], payloads: {},
       references: fs.existsSync(refDir) ? fs.readdirSync(refDir).filter(n => n.endsWith('.md')).map(n => ({name:path.basename(n,'.md'),content:fs.readFileSync(path.join(refDir,n),'utf8'),filePath:path.join(refDir,n)})) : [],
       scripts: fs.existsSync(path.join(redesignDir, 'scripts')) ? readSkillScripts(path.join(redesignDir, 'scripts')) : [] });
+  }
   }
   return { skills };
 }
@@ -704,12 +712,12 @@ export function replacePlaceholders(content, provider, commandNames = [], allSki
   // Otherwise fall back to listing skill names (backwards compat for forks).
   const nonExcluded = commandNames.filter(n => !EXCLUDED_FROM_SUGGESTIONS.has(n));
   let commandList;
-  if (nonExcluded.length === 0 || nonExcluded.every(n => n === 'congo')) {
+  if (nonExcluded.length === 0 || nonExcluded.every(n => n === 'congo' || n.startsWith('congo-'))) {
     // Single-skill architecture: list sub-commands as /impeccable <sub>
     commandList = IMPECCABLE_SUB_COMMANDS
       .map(n => `${cmdPrefix}impeccable ${n}`)
       .join(', ');
-    if (nonExcluded.includes('congo')) commandList += `, ${cmdPrefix}congo`;
+    for (const n of nonExcluded) commandList += `, ${cmdPrefix}${n}`;
   } else {
     // Multi-skill architecture (backwards compat)
     commandList = nonExcluded.map(n => `${cmdPrefix}${n}`).join(', ');

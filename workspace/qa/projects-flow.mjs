@@ -41,7 +41,7 @@ async function saveCard(page, n, target) {
   return page.locator('.toast').textContent({ timeout: 5000 });
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await go(page, `/compose/${arg('compose')}`);

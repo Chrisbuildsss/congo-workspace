@@ -12,7 +12,7 @@ Impeccable gives your coding agent a process to shape, critique, harden, and fin
 |---|---|
 | ![Impeccable's concept picker showing invented interface directions for an outbound calling platform](docs/images/readme-without-congo.png) | ![The Congo-enabled picker showing the same product adapted onto Hush, Quibble, and Ghosted](docs/images/readme-with-congo.png) |
 
-Same Mocov brief: an AI outbound calling platform. Without Congo, Impeccable begins with conceptual interface directions. With Congo, the agent can put three real, working app patterns in front of you, adapt the one you pick to the product, and then run Impeccable's usual passes to make it yours.
+Same Mocov brief: an AI outbound calling platform. Without Congo, Impeccable begins with conceptual interface directions. With Congo, the agent starts from real, working apps that already do the job, adapts the closest one to the product, and then uses Impeccable's passes to make it yours.
 
 Congo replaces the blank canvas, not the craft process.
 
@@ -20,10 +20,10 @@ Congo replaces the blank canvas, not the craft process.
 
 Impeccable works here exactly as it does upstream. The fork adds access to [Congo](https://buildwithcongo.com), a library of real app screens, full app templates and design handbooks that ship with working React source.
 
-- **Real starting points.** The agent can find apps built around the same core job, install their source into a scratch project, and show the product adapted onto each one before you choose a direction.
-- **The same Impeccable process.** Once you pick an app, the agent adapts it to your product and `DESIGN.md`, then runs Impeccable's critique, audit, responsive, polish, and documentation passes.
+- **Real starting points.** The agent finds the app built around the same core job, installs its source, and adapts it to your product instead of starting from a blank page. One version by default; more when you ask.
+- **The same Impeccable process.** The agent adapts the app to your product and `DESIGN.md`, and Impeccable's critique, audit, responsive, polish, and documentation passes are there when you want them.
 - **Evidence beyond the first screen.** Congo also feeds planning, live-mode alternatives, direct edits, critique comparisons, and design handbooks.
-- **A visual workspace.** Type `/congo` (`$congo` in Codex) to start a new app or redesign one: the workspace shows your AI's alternatives as running code, the Congo library, your saved designs, live editing and your running app. Your own AI does the work.
+- **A workspace for product discovery and rapid prototyping.** Run `congo workspace` or type `/congo` (`$congo` in Codex). In Explore, browse real apps and screens, select some with a note on each, and send them to your AI. Results land in Prototypes as running apps you can click through and live edit, main screen first. They are kept in Congo files in your Documents, and Pull into a project puts one into your code. Two optional helpers, `/congo-compete` and `/congo-ideas`, research a competitor or find ideas and prototype them with a brief. Your own AI does the work.
 - **Every Impeccable command still works.** Use Impeccable exactly as before. The agent reaches for Congo when real source would improve the work.
 
 The instructions live in [skill/reference/congo.md](skill/reference/congo.md).

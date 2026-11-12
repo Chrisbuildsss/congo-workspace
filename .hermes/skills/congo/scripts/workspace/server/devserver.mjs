@@ -1,4 +1,4 @@
-// Live App: runs the user's project's own dev command, only when they click
+// My app: runs the user's project's own dev command, only when they click
 // Start, and keeps its state, output and local URL. Stop ends the whole tree.
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';

@@ -1,0 +1,36 @@
+[
+  {
+    "route": "/prototypes",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\no-chat-rail\\prototypes-390-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/prototypes",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\no-chat-rail\\prototypes-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/prototypes",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\no-chat-rail\\prototypes-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/prototypes",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\no-chat-rail\\prototypes-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  }
+]

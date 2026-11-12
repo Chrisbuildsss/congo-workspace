@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { BookmarkIcon, EllipsisIcon } from "../Icons";
+import { BookmarkIcon, EllipsisIcon, InfoIcon } from "../Icons";
+import BriefPanel from "./BriefPanel";
 import type { Design } from "../types";
 import DesignFrame from "../DesignFrame";
 import { useClickOutside } from "./Ui";
@@ -13,6 +14,9 @@ import { useClickOutside } from "./Ui";
 export type CardAction =
   | "use"
   | "build"
+  | "select"
+  | "rename"
+  | "expand"
   | "subtle"
   | "layout"
   | "colorize"
@@ -81,6 +85,7 @@ export default function DesignCard({
   showHoverActions = true,
   compact = false,
   saved = false,
+  clickDeselects = true,
 }: {
   design: Design;
   onOpen: () => void;
@@ -89,7 +94,7 @@ export default function DesignCard({
   selected?: boolean;
   onToggleSelected?: () => void;
   bookmarked?: boolean;
-  /** Build this (Compose) or Use this (Library). */
+  /** Use this, on Library items and on prototypes. */
   primary?: QuickAction;
   tweaks?: QuickAction[];
   showMore?: boolean;
@@ -102,11 +107,14 @@ export default function DesignCard({
   showHoverActions?: boolean;
   compact?: boolean;
   saved?: boolean;
+  /** Clicking a selected card deselects it (Variant); the Library opens it instead. */
+  clickDeselects?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  const [briefOpen, setBriefOpen] = useState(false);
   const menuRef = useClickOutside<HTMLDivElement>(menuOpen, () => setMenuOpen(false));
   const quickRef = useClickOutside<HTMLDivElement>(quickOpen, () => {
     setQuickOpen(false);
@@ -122,7 +130,7 @@ export default function DesignCard({
   };
 
   const open = () => {
-    if (selected) onToggleSelected?.();
+    if (selected && clickDeselects) onToggleSelected?.();
     else onOpen();
   };
 
@@ -164,7 +172,8 @@ export default function DesignCard({
           <button
             type="button"
             className="selection-bubble"
-            aria-label="Toggle selection"
+            aria-label={selected ? `Remove ${design.title} from your request` : `Select ${design.title}`}
+            aria-pressed={Boolean(selected)}
             onClick={(event) => {
               event.stopPropagation();
               onToggleSelected?.();
@@ -181,7 +190,24 @@ export default function DesignCard({
         </span>
       </div>
 
+      {design.brief && briefOpen ? <BriefPanel brief={design.brief} className="card-brief" /> : null}
+
       <div className="card-top-actions">
+        {design.brief ? (
+          <button
+            type="button"
+            className="card-icon-button card-info-button"
+            aria-label={briefOpen ? "Hide the brief" : "Show the brief"}
+            aria-expanded={briefOpen}
+            data-active={briefOpen || undefined}
+            onClick={(event) => {
+              event.stopPropagation();
+              setBriefOpen((value) => !value);
+            }}
+          >
+            <InfoIcon />
+          </button>
+        ) : null}
         {menuItems.length > 0 ? (
           <div className="card-menu-wrap" ref={menuRef}>
             <button

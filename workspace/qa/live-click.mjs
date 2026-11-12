@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const args = process.argv.slice(2);
 const arg = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : undefined; };
 const base = new URL(arg('base')); const hash = base.hash; base.hash = ''; base.pathname = '/live';
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto(base.href + hash, { waitUntil: 'networkidle' });

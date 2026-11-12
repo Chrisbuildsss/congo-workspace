@@ -1,0 +1,70 @@
+[
+  {
+    "route": "/explore",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\discovery-after\\explore-390-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  {
+    "route": "/explore/screens",
+    "size": "390",
+    "scheme": "light",
+    "file": "workspace\\qa\\discovery-after\\explore-screens-390-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/explore",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\discovery-after\\explore-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/explore/screens",
+    "size": "1440",
+    "scheme": "light",
+    "file": "workspace\\qa\\discovery-after\\explore-screens-1440-light.png",
+    "horizontalOverflow": false,
+    "errors": [
+      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+    ]
+  },
+  {
+    "route": "/explore",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\discovery-after\\explore-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/explore/screens",
+    "size": "390",
+    "scheme": "dark",
+    "file": "workspace\\qa\\discovery-after\\explore-screens-390-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/explore",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\discovery-after\\explore-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  },
+  {
+    "route": "/explore/screens",
+    "size": "1440",
+    "scheme": "dark",
+    "file": "workspace\\qa\\discovery-after\\explore-screens-1440-dark.png",
+    "horizontalOverflow": false,
+    "errors": []
+  }
+]

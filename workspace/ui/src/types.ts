@@ -30,6 +30,56 @@ export interface Design {
   local?: boolean;
   requestId?: string | null;
   appId?: string | null;
+  /** A whole app, served at the root of its own local address. */
+  root?: boolean;
+  /** The prototype's runnable source, for Edit and Use this. */
+  sourceDir?: string;
+  /** While the person edits it: the source's dev server with Impeccable's editor. */
+  editUrl?: string;
+  /** Its folder in a Congo file, and that file's name. */
+  dir?: string;
+  file?: string;
+  /** adapting: no preview yet; main: the main screen is adapted; expanding; ready; error. */
+  status?: "adapting" | "main" | "expanding" | "ready" | "error";
+  error?: string;
+  /** Product ideas carry a short brief; design-only prototypes have none. */
+  brief?: Brief;
+  builtAt?: string;
+}
+
+export interface Brief {
+  who?: string;
+  why?: string;
+  supports?: string;
+  next?: string;
+  text?: string;
+}
+
+/** A Library app or screen in the request tray, with the person's note. */
+export interface TrayItem {
+  kind: "template" | "app" | "screen";
+  id: string;
+  version: string | null;
+  app: { id: string | null; slug: string | null; name: string | null } | null;
+  title: string;
+  route: string | null;
+  image: string | null;
+  preview: string | null;
+  url: string | null;
+  note: string;
+}
+
+export interface Tray {
+  items: TrayItem[];
+  note: string;
+}
+
+export interface SavedState {
+  available: boolean;
+  signedIn: boolean | null;
+  ids: string[];
+  slugs: string[];
+  reason: string | null;
 }
 
 export interface LibraryApp {
@@ -108,11 +158,14 @@ export interface WorkspaceState {
   designs: Record<string, Design>;
   projects: Project[];
   requests: WorkspaceRequest[];
+  tray: Tray;
+  /** Where Congo files are kept on this computer. */
+  filesRoot?: string;
 }
 
 export interface WorkspaceRequest {
   id: string;
-  type: "compose" | "tweak" | "build" | "library" | "start-app" | "live-edit" | "switch-to-area";
+  type: "send" | "compose" | "tweak" | "expand" | "build" | "library" | "start-app" | "live-edit" | "rebuild" | "switch-to-area";
   status: "sent" | "done" | "error";
   composeId: string | null;
   appId?: string | null;
@@ -121,6 +174,9 @@ export interface WorkspaceRequest {
   createdAt: string;
   outputs: string[];
   message: string | null;
+  /** What the person asked, in a few words. */
+  summary?: string | null;
+  doneAt?: string | null;
 }
 
 export interface WorkspaceStatus {

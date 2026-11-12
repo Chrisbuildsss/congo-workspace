@@ -50,10 +50,18 @@ export async function prepareApp({ root, templateId, refresh = false, env = proc
   if (!refresh && isReady(dir)) return { dir, fresh: false, ...receiptVersion(dir) };
   if (fs.existsSync(dir)) removeTree(dir);
   fs.mkdirSync(appsDir(root), { recursive: true });
-  const created = await run(['create', templateId, '--project', dir, '--install'], { env, timeoutMs: 15 * 60_000 });
-  if (created.code !== 0) {
-    const reason = `${created.stderr ?? ''}\n${created.stdout ?? ''}`.split(/\r?\n/).map((l) => l.trim()).find(Boolean);
+  // The download is one request; installing follows. A dropped connection is
+  // retried once, and whatever was half-written is cleared first.
+  let created;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    created = await run(['create', templateId, '--project', dir], { env, timeoutMs: 5 * 60_000 });
+    if (created.code === 0) break;
     if (fs.existsSync(dir)) removeTree(dir);
+    if (!/Couldn't reach|ENOTFOUND|ETIMEDOUT|ECONNRESET|network/i.test(`${created.stderr}${created.stdout}`)) break;
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+  if (created.code !== 0) {
+    const reason = `${created.stderr ?? ''}\n${created.stdout ?? ''}`.split(/\r?\n/).map((l) => l.trim()).find((l) => l && !/^npm (warn|notice)/i.test(l));
     throw new Error(reason || created.error?.message || 'congo create failed');
   }
   if (!fs.existsSync(path.join(dir, 'node_modules'))) {
@@ -122,10 +130,12 @@ export function buildPreview({ prototypeDir, status }) {
   if (!fs.existsSync(path.join(source, 'package.json'))) throw new Error(`No source to build at ${source}`);
   const out = path.join(prototypeDir, '.preview-build');
   if (fs.existsSync(out)) removeTree(out);
-  const bin = path.join(source, 'node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
+  // Vite's own entry script, run with this Node: no shell, so folder names
+  // with spaces (a Congo file's name) are safe.
+  const bin = path.join(source, 'node_modules', 'vite', 'bin', 'vite.js');
   let result;
   if (fs.existsSync(bin)) {
-    result = spawnSync(bin, ['build', '--outDir', out, '--emptyOutDir', '--base', '/', '--logLevel', 'warn'], { cwd: source, encoding: 'utf8', windowsHide: true, shell: process.platform === 'win32', timeout: 10 * 60_000 });
+    result = spawnSync(process.execPath, [bin, 'build', '--outDir', out, '--emptyOutDir', '--base', '/', '--logLevel', 'warn'], { cwd: source, encoding: 'utf8', windowsHide: true, timeout: 10 * 60_000 });
   } else {
     result = npm(['run', 'build'], source);
     if (result.code === 0 && fs.existsSync(path.join(source, 'dist'))) fs.cpSync(path.join(source, 'dist'), out, { recursive: true });

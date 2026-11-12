@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Timed end-to-end flow through the real workspace UI, for a connected AI:
-// select Library items, add notes, Send, wait for the prototype in Prototypes,
-// then (with --use) press Use this, wait for the AI, and Start the app in My app.
+// select Explore items, add notes, Send, time the placeholder card and the
+// main screen, then (with --expand) Expand and (with --use) Pull into a project.
 // Usage:
 //   node workspace/qa/send-flow.mjs --base URL --app "App name" [--screen "app-slug:Screen title"]...
 //     [--note "..."] [--item-note "..."]... [--use] [--wait-min 60] [--out DIR]
@@ -51,7 +51,7 @@ async function until(check, label, ms = waitMs, every = 2000) {
   throw new Error(`timed out waiting for ${label}`);
 }
 
-const report = { selected: [], timings: {}, send: null, prototype: null, use: null, app: null, errors: [] };
+const report = { selected: [], timings: {}, send: null, prototype: null, expand: null, use: null, errors: [] };
 const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 page.on('pageerror', (e) => report.errors.push(String(e)));
@@ -60,7 +60,7 @@ try {
   report.ai = { connected: ai.connected, listening: ai.listening };
 
   // Select whole apps from the Library, then screens inside their apps.
-  await page.goto(at('/library'), { waitUntil: 'domcontentloaded' });
+  await page.goto(at('/explore'), { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.community-grid .design-card', { timeout: 30000 });
   if ((await page.locator('.request-tray-head button').count()) > 0) await page.locator('.request-tray-head button').click();
   for (const name of apps) {
@@ -71,7 +71,7 @@ try {
   }
   for (const entry of screens) {
     const [slug, title] = entry.split(/:(.*)/s);
-    await page.goto(at(`/library/apps/${slug}`), { waitUntil: 'domcontentloaded' });
+    await page.goto(at(`/explore/apps/${slug}`), { waitUntil: 'domcontentloaded' });
     await page.fill('.library-search input', title).catch(() => {});
     const card = page.locator('.community-grid .design-card', { has: page.locator('.card-title-pill b', { hasText: title }) }).first();
     await card.waitFor({ timeout: 30000 });
@@ -79,7 +79,7 @@ try {
     await card.locator('.selection-bubble').click();
     report.selected.push(`screen:${slug}:${title}`);
   }
-  await page.goto(at('/library'), { waitUntil: 'domcontentloaded' });
+  await page.goto(at('/explore'), { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.request-tray-item', { timeout: 15000 });
   const notes = page.locator('.request-tray-note');
   for (let i = 0; i < Math.min(await notes.count(), itemNotes.length); i++) await notes.nth(i).fill(itemNotes[i]);
@@ -89,80 +89,80 @@ try {
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(out, 'send-1-tray.png') });
 
-  // Send, then wait for the prototype.
+  // Send. The card should exist at once (a skeleton), then gain its preview
+  // when the main screen is adapted.
   const before = new Set((await state()).requests.map((r) => r.id));
   const sentAt = Date.now();
   await page.locator('.global-composer .composer-submit').click();
-  const send = await until(async () => (await state()).requests.find((r) => r.type === 'send' && !before.has(r.id)), 'the send request', 30000, 500);
+  const send = await until(async () => (await state()).requests.find((r) => r.type === 'send' && !before.has(r.id)), 'the send request', 30000, 250);
+  await until(async () => (await state()).designs[`${send.id}-1`], 'the placeholder card', 30000, 250);
+  report.timings.sendToCardSeconds = seconds(sentAt);
+  await page.waitForSelector('.generating-card', { timeout: 15000 }).catch(() => report.errors.push('no skeleton card shown'));
+  await page.screenshot({ path: path.join(out, 'send-2-skeleton.png') });
   report.send = { id: send.id };
   log(`sent ${send.id}`);
-  const done = await until(async () => {
-    const s = await state();
-    const r = s.requests.find((x) => x.id === send.id);
-    return r && r.status !== 'sent' && { r, s };
-  }, 'the AI to finish the prototype');
-  report.timings.sendToReplySeconds = seconds(sentAt);
-  report.send = { id: send.id, status: done.r.status, message: done.r.message };
   const card = await until(async () => {
-    const s = await state();
-    return Object.values(s.designs).find((d) => d.local && d.id.startsWith(`${send.id}-`));
-  }, 'the prototype card', 60000);
-  report.timings.sendToPrototypeSeconds = seconds(sentAt);
-  report.prototype = { id: card.id, title: card.title, root: Boolean(card.root), sourceDir: card.sourceDir ?? null, src: card.src };
-  log(`prototype ${card.id}: ${card.title}`);
+    const d = (await state()).designs[`${send.id}-1`];
+    return d?.src && d;
+  }, 'the main screen');
+  report.timings.sendToMainScreenSeconds = seconds(sentAt);
+  const done = await until(async () => {
+    const r = (await state()).requests.find((x) => x.id === send.id);
+    return r && r.status !== 'sent' && r;
+  }, 'the reply', 10 * 60_000);
+  report.timings.sendToReplySeconds = seconds(sentAt);
+  report.send = { id: send.id, status: done.status, message: done.message };
+  const fresh = (await state()).designs[card.id];
+  report.prototype = { id: fresh.id, title: fresh.title, status: fresh.status, file: fresh.file, dir: fresh.dir, brief: Boolean(fresh.brief), src: fresh.src };
+  log(`main screen ${fresh.id}: ${fresh.title} [${fresh.status}]`);
 
-  // Open it full size and check it runs.
+  // Open it: a desktop preview filling the workspace, clickable.
   await page.goto(at('/prototypes'), { waitUntil: 'domcontentloaded' });
-  const protoCard = page.locator('.design-card', { has: page.locator('.card-title-pill b', { hasText: card.title }) }).first();
+  const protoCard = page.locator('.design-card', { has: page.locator('.card-title-pill b', { hasText: fresh.title }) }).first();
   await protoCard.waitFor({ timeout: 30000 });
   await page.waitForTimeout(2500);
-  await page.screenshot({ path: path.join(out, 'send-2-prototypes.png') });
+  await page.screenshot({ path: path.join(out, 'send-3-prototypes.png') });
   await protoCard.click({ position: { x: 40, y: 120 } });
   await page.waitForSelector('.design-detail iframe', { timeout: 15000 });
   await page.waitForTimeout(3000);
+  const box = await page.locator('.design-detail iframe').boundingBox();
   const frame = await (await page.$('.design-detail iframe')).contentFrame();
+  report.prototype.frameWidth = Math.round(box.width);
   report.prototype.renders = await frame.evaluate(() => document.body.innerText.trim().length > 40).catch(() => false);
-  report.prototype.links = await frame.evaluate(() => document.querySelectorAll('a[href], button').length).catch(() => 0);
-  await page.screenshot({ path: path.join(out, 'send-3-prototype-open.png') });
+  report.prototype.controls = await frame.evaluate(() => document.querySelectorAll('a[href], button').length).catch(() => 0);
+  await page.screenshot({ path: path.join(out, 'send-4-main-screen-open.png') });
+
+  if (argv.includes('--expand') && fresh.status === 'main') {
+    const expandAt = Date.now();
+    await page.locator('.design-detail .detail-export', { hasText: 'Expand' }).click();
+    const expand = await until(async () => (await state()).requests.find((r) => r.type === 'expand' && r.designId === fresh.id), 'the expand request', 30000, 250);
+    log(`expand ${expand.id}`);
+    const expanded = await until(async () => {
+      const r = (await state()).requests.find((x) => x.id === expand.id);
+      return r && r.status !== 'sent' && r;
+    }, 'Expand to finish');
+    report.timings.expandSeconds = seconds(expandAt);
+    report.expand = { id: expand.id, status: expanded.status, message: expanded.message, prototypeStatus: (await state()).designs[fresh.id]?.status };
+    await page.waitForTimeout(4000);
+    await page.screenshot({ path: path.join(out, 'send-5-expanded.png') });
+  }
 
   if (use) {
-    const beforeUse = new Set((await state()).requests.map((r) => r.id));
-    const appsBefore = new Set((await state()).apps.map((a) => a.id));
-    const usedAt = Date.now();
-    await page.locator('.design-detail .detail-export', { hasText: 'Use this' }).click();
-    const build = await until(async () => (await state()).requests.find((r) => r.type === 'build' && !beforeUse.has(r.id)), 'the Use this request', 30000, 500);
-    log(`use this ${build.id}`);
+    const beforePull = new Set((await state()).requests.map((r) => r.id));
+    const pullAt = Date.now();
+    await page.locator('.design-detail .detail-export', { hasText: 'Pull into a project' }).click();
+    await page.waitForSelector('.pull-card', { timeout: 5000 });
+    await page.screenshot({ path: path.join(out, 'send-6-pull-dialog.png') });
+    await page.locator('.pull-card .pull-list button', { hasText: dest === 'A new app' ? 'A new project' : dest }).first().click();
+    const build = await until(async () => (await state()).requests.find((r) => r.type === 'build' && !beforePull.has(r.id)), 'the pull request', 30000, 250);
+    log(`pull ${build.id}`);
     const built = await until(async () => {
       const r = (await state()).requests.find((x) => x.id === build.id);
       return r && r.status !== 'sent' && r;
-    }, 'the AI to apply the prototype');
-    report.timings.useToReplySeconds = seconds(usedAt);
+    }, 'the AI to pull it into a project');
+    report.timings.pullToReplySeconds = seconds(pullAt);
     report.use = { id: build.id, status: built.status, message: built.message };
-    const s = await state();
-    const app = s.apps.find((a) => !appsBefore.has(a.id)) ?? s.apps.find((a) => a.id === s.activeAppId);
-    report.app = app ? { name: app.name, path: app.path } : null;
-    if (app) {
-      await page.goto(at('/live'), { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(2500);
-      if (await page.locator('.live-state.is-running').count()) {
-        // Already running (an existing app): its dev server picks the change up.
-        report.timings.useToRunningSeconds = seconds(usedAt);
-        await page.waitForTimeout(4000);
-        await page.screenshot({ path: path.join(out, 'send-4-my-app.png') });
-        throw Object.assign(new Error('already running'), { done: true });
-      }
-      const start = page.locator('.dialog-primary', { hasText: 'Start' });
-      await start.waitFor({ timeout: 30000 });
-      const startAt = Date.now();
-      await start.click();
-      await page.waitForSelector('.live-state.is-running', { timeout: 5 * 60_000 });
-      report.timings.startToRunningSeconds = seconds(startAt);
-      report.timings.useToRunningSeconds = seconds(usedAt);
-      await page.waitForTimeout(4000);
-      await page.screenshot({ path: path.join(out, 'send-4-my-app.png') });
-    }
-  }
-} catch (error) {
+  }} catch (error) {
   if (!error.done) report.errors.push(error.message);
 } finally {
   await browser.close();

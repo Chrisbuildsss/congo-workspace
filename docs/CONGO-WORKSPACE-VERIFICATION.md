@@ -7,9 +7,10 @@ Everything ran in scratch folders: a scratch workspace home (`CONGO_WORKSPACE_HO
 ## Changes after the timed runs (owner, November 12)
 
 - **No chat in the local workspace.** The Prototypes conversation rail, its replies and its request box are switched off locally (`WORKSPACE_CHAT` in `workspace/ui/src/App.tsx`; the code stays for the hosted workspace, where Congo AI answers). Prototypes shows only cards. Explore keeps its bar: what is typed or selected there goes to the person's AI, and the skill has the AI say in its own chat what arrived. A failed request still shows its reason on the card. Checked in a browser with stand-in prototypes at 390 and 1440 px, light and dark (`workspace/qa/no-chat-rail/`); not re-run with an AI.
+- **The request above its prototypes.** In place of the rail, each request's prototypes sit under what was asked (up to two lines) and one quiet line with the AI's reply; a later request in the same thread shows as "Sent to your AI: ..." until it is answered. Nothing can be typed there. Checked in a browser with a stand-in prototype and a reply typed by the build session, at 390 and 1440 px, light and dark (`workspace/qa/no-chat-rail/`); not re-run with an AI.
 - **Live editor colorway.** Impeccable's gold and teal became a black bar with one light blue accent (`workspace/qa/editor-colors/`).
 
-The timings and results below were measured before these two changes; neither changes how requests reach the AI.
+The timings and results below were measured before these changes; none of them changes how requests reach the AI.
 
 ## Who did what
 

@@ -249,12 +249,22 @@ export default function PrototypesView({
               {groups.map(({ compose, cards, pending }) => (
                 <section className="prototype-group" key={compose.id} aria-label={compose.title}>
                   <header className="prototype-group-head">
-                    <b>{compose.title}</b>
+                    <b>{compose.messages.find((message) => message.role === "user")?.text ?? compose.title}</b>
                     <span>
                       {pending > 0 ? "Your AI is making it" : when(compose.messages[compose.messages.length - 1]?.at ?? cards[0]?.createdAt)}
                       {compose.id === "loose" ? "" : compose.appId ? ` · ${apps.find((app) => app.id === compose.appId)?.name ?? "your app"}` : " · new app"}
                     </span>
                   </header>
+                  {/* What was last asked in this thread and what the AI said about it: one line, not a chat. */}
+                  {(() => {
+                    const last = compose.messages[compose.messages.length - 1];
+                    if (!last) return null;
+                    const firstUser = compose.messages.find((message) => message.role === "user");
+                    if (last.role === "user") {
+                      return last === firstUser ? null : <p className="prototype-group-note">Sent to your AI: {last.text}</p>;
+                    }
+                    return <p className="prototype-group-note">{last.text}</p>;
+                  })()}
                   <div className="chat-design-grid">
                     {cards.map((design, index) =>
                       !design.src && design.status !== "error" ? (

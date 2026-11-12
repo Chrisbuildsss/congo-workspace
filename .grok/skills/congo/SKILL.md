@@ -15,8 +15,11 @@ Congo is a workspace for product discovery and rapid prototyping. Its Library ho
 
 - **Do what the user asked.** There is no fixed routine and there are no built-in ways in: ideas, research, a competitor, a redesign, a prototype from things they selected are all just requests. No rounds of options, interviews or decision pages before you make something.
 - **One prototype by default.** Several side by side only when the user asks ("a few directions", "three ideas").
-- **Main screen first.** Adapt the main screen or the main workflow, build the preview and show it. The rest of the app stays as the original until the user asks to Expand it. Say in one line what is adapted and what is still the source app's.
-- **Whole app or screens is your call,** from what the user selected and said. With nothing selected, search the Library and choose from what it holds today.
+- **The user's request decides how much you build.** If they want a whole app, adapt the whole app; if they want a screen, adapt that screen. These are their call, and a whole app is worth their wait.
+- **When it is open, prefer a main screen.** For ideas, options, a few directions, or anything that does not say how much, prefer pulling the main screen of the closest app (its home screen, or the screen the product lives in) and adapting just that. It gets something real in front of the user fastest, and Expand builds out from there once they choose. This is a preference to keep you fast, not a rule: use your judgment.
+- Say in one line what is adapted and what is still the source app's.
+- **Be quick about the first result.** `WS prepare` prints a `map` of the app it copied: its guide, where routes are declared, and the folders that hold screens and sample data. Go from that map straight to the screen you are adapting and its data; do not tour the rest of the app. Change names, content, sample data and labels in place with your file-editing tools (shell heredocs break on quotes), do not restructure, and do not polish before showing it. While `WS prepare` runs for the first time, do your reading of anything else in parallel.
+- **Whole app or screens as the base is your call** when nothing is selected: search the Library and choose from what it holds today.
 - **Adapt before building.** Change the real source's names, content, sample data, labels and wiring for the user's product. Write new pieces only where the Library has nothing close, from the app's own components and styles.
 - **Prototypes go into Congo files,** never straight into a code project. Only **Pull into a project** changes the user's code.
 - **Ask only when it matters.** Otherwise make a sensible choice and say what you chose.
@@ -38,8 +41,8 @@ Prototypes are kept in Congo files: folders ending in `.congo` in the user's `Do
 
 1. Find the closest app or screens (`congo templates --json`, `congo search --kind screen --query "<words>" --json`), unless the user selected them.
 2. `WS new`, then `WS prepare <template-id> --into <prototype folder>`.
-3. Adapt the main screen or workflow in `source/` to the user's product.
-4. `WS preview <prototype folder> --status main`, write the title and a one-sentence summary into `prototype.json`, and for a product idea a `brief` (see the reference).
+3. Adapt as much as the request asks for (above) in `source/`.
+4. `WS preview <prototype folder> --status main` when only a screen is adapted, or `--status ready` when the whole app is. Write the title and a one-sentence summary into `prototype.json`, and for a product idea a `brief` (see the reference).
 5. Tell the user it is in Prototypes, and offer to open the workspace: `WS open --view prototypes`.
 
 This works with the workspace closed: the prototype is in its Congo file and shows up when the workspace next opens.

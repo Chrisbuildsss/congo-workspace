@@ -51,7 +51,8 @@ export function fileTitle(text) {
     .replace(/\s+/g, ' ')
     .replace(/[. ]+$/g, '')
     .trim()
-    .slice(0, 80);
+    .slice(0, 48)
+    .replace(/[. ]+$/g, '');
   return clean || 'Prototypes';
 }
 

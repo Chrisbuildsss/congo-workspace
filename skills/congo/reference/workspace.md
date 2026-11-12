@@ -35,7 +35,7 @@ A folder in a Congo file:
 
 **The steps, in this order:**
 
-1. `WS prepare <template-id> --into <outputs[0].dir> --json`. It copies the app's source into `source/`, links its dependencies and commits it once as "congo source", so later changes are a clean diff. The first use of an app downloads and installs it (the user's Congo sign-in and subscription apply); later uses reuse it and take seconds.
+1. `WS prepare <template-id> --into <outputs[0].dir> --json`. It copies the app's source into `source/`, links its dependencies and commits it once as "congo source", so later changes are a clean diff. The first use of an app downloads and installs it (the user's Congo sign-in and subscription apply); later uses reuse it and take seconds. It prints a `map` of the source (guides, route files, folders with screens and data): start from it.
 2. Adapt as much as the user asked for in `source/`: the product's name, content, sample data, labels and the obvious actions. Keep the app's design and behavior. For one screen, read only the files that screen needs, change them in place and leave the other screens as they are; make the prototype open on that screen.
 3. `WS preview <outputs[0].dir> --status main|ready --json`, then add `title`, `summary`, `source`, `sources` and `notices` to `prototype.json` (keep the fields already there).
 4. Reply with one line: what is adapted and, for `main`, that Expand builds out the rest.

@@ -111,12 +111,62 @@ export async function prepareSource({ root, templateId, prototypeDir, refresh = 
   copyTree(app.dir, source);
   linkModules(source, app.dir);
   fs.appendFileSync(path.join(source, '.gitignore'), '\nnode_modules\n');
-  git(['init', '-q'], source);
-  git(['add', '-A'], source);
-  git(['-c', 'user.name=Congo', '-c', 'user.email=workspace@congo.local', 'commit', '-q', '-m', 'congo source'], source);
+  // The baseline Pull into a project diffs against. Long paths are allowed
+  // (a Congo file can sit deep in Documents), and a failure is never silent.
+  for (const args of [
+    ['init', '-q'],
+    ['config', 'core.longpaths', 'true'],
+    ['config', 'core.autocrlf', 'false'],
+    ['add', '-A'],
+    ['-c', 'user.name=Congo', '-c', 'user.email=workspace@congo.local', 'commit', '-q', '-m', 'congo source'],
+  ]) {
+    const step = git(args, source);
+    if (step.status !== 0) throw new Error(`Could not record the app's starting point (git ${args[0]}): ${`${step.stderr ?? ''}`.trim().split(/\r?\n/)[0] || 'git failed'}`);
+  }
   const meta = updatePrototype(prototypeDir, { sourceDir: 'source', root: true, base: { kind: 'template', id: app.id ?? templateId, version: app.version ?? null } });
   appendHistory(prototypeDir, { type: 'source', template: templateId, version: app.version ?? null, reused: !app.fresh });
-  return { source, prepared: app.dir, reused: !app.fresh, version: app.version ?? null, seconds: Math.round((Date.now() - started) / 100) / 10, title: meta.title };
+  return { source, prepared: app.dir, reused: !app.fresh, version: app.version ?? null, seconds: Math.round((Date.now() - started) / 100) / 10, title: meta.title, map: sourceMap(source) };
+}
+
+/**
+ * A short map of an app's source, so the AI can open the right files first
+ * instead of exploring: its guide, where routes are declared, and the folders
+ * that hold screens and sample data. Found by looking, never assumed.
+ */
+export function sourceMap(source) {
+  const rel = (file) => path.relative(source, file).split(path.sep).join('/');
+  const exists = (...parts) => fs.existsSync(path.join(source, ...parts));
+  const map = { guides: [], entry: [], routes: [], folders: [] };
+  for (const name of ['README.md', 'CONGO.md', 'BRAND.md']) if (exists(name)) map.guides.push(name);
+  const src = path.join(source, 'src');
+  if (!fs.existsSync(src)) return map;
+  const files = [];
+  const walk = (dir, depth) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { if (depth < 4) walk(full, depth + 1); } else if (/\.(tsx?|jsx?)$/.test(entry.name)) files.push(full);
+    }
+  };
+  walk(src, 0);
+  for (const file of files) {
+    const name = path.basename(file).toLowerCase();
+    if (/^(main|index|app)\.(tsx?|jsx?)$/.test(name) && path.dirname(file) === src) map.entry.push(rel(file));
+    if (/rout(er|es)/.test(name)) map.routes.push(rel(file));
+  }
+  // The file that maps addresses to screens, when no router file names itself.
+  if (!map.routes.length) {
+    for (const file of files) {
+      if (fs.statSync(file).size > 200_000) continue;
+      const text = fs.readFileSync(file, 'utf8');
+      if (/<Route\b|createBrowserRouter|path:\s*['"]\//.test(text)) { map.routes.push(rel(file)); if (map.routes.length >= 3) break; }
+    }
+  }
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const inside = files.filter((file) => file.startsWith(path.join(src, entry.name) + path.sep));
+    map.folders.push({ folder: `src/${entry.name}`, files: inside.length, examples: inside.slice(0, 4).map((file) => path.basename(file)) });
+  }
+  return map;
 }
 
 /**

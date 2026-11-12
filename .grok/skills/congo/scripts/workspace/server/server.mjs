@@ -467,7 +467,10 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       if (['send', 'compose', 'library', 'tweak'].includes(type)) {
         if (type === 'tweak' && design?.dir && inCongoFiles(design.dir)) outDir = path.dirname(design.dir);
         else {
-          if (!target.fileDir || !fs.existsSync(target.fileDir)) target.fileDir = createCongoFile(congoRoot, target.title);
+          // Named from the person's words (their note), else what they picked; short,
+          // so it reads well as a folder and stays clear of path-length limits.
+          const name = (text || item?.title || items?.map((i) => i.title).join(', ') || target.title).split(/[.!?\n]/)[0];
+          if (!target.fileDir || !fs.existsSync(target.fileDir)) target.fileDir = createCongoFile(congoRoot, name);
           outDir = target.fileDir;
         }
       }

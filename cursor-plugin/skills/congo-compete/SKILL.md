@@ -17,7 +17,7 @@ An optional helper for the Congo workspace. It researches one product and protot
 
    Keep it to a few minutes. Note where each finding came from.
 3. **Choose one angle.** A competitor needs a reason to exist: a niche the product ignores, a simpler version of its core job, a missing feature its users ask for, a lower price for a narrower need. Pick the strongest and say it in one sentence. Never copy the product's name, brand, text or artwork.
-4. **Prototype it** with the `congo` skill: the closest app in the Library for that job, main screen first, one prototype unless the user asked for several angles.
+4. **Prototype it** with the `congo` skill: the closest app in the Library for that job, its main screen only, adapted fast (Expand builds out the rest), one prototype unless the user asked for several angles.
 5. **Write the brief** into the prototype's `prototype.json`, as the `congo` skill's reference describes:
    - `who`: the people the angle is for;
    - `why`: why this angle, against that product;

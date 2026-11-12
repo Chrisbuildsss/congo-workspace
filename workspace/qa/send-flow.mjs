@@ -80,7 +80,7 @@ try {
     report.selected.push(`screen:${slug}:${title}`);
   }
   await page.goto(at('/explore'), { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.request-tray-item', { timeout: 15000 });
+  if (apps.length + screens.length) await page.waitForSelector('.request-tray-item', { timeout: 15000 });
   const notes = page.locator('.request-tray-note');
   for (let i = 0; i < Math.min(await notes.count(), itemNotes.length); i++) await notes.nth(i).fill(itemNotes[i]);
   await page.locator('.global-composer .composer-select').first().click();

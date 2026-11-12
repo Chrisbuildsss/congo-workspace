@@ -107,6 +107,7 @@ export function describeAction(key) {
   return null;
 }
 
+
 export function buildRequest({ type, id = newId(), files, reference, impeccableReference, app, compose, text, design, action, item, items, attachment, outDir = null, filesRoot = null, helper = null }) {
   const count = PROTOTYPE_TYPES.includes(type) ? PROTOTYPES : 0;
   // Each prototype is a folder in a Congo file: its preview build in
@@ -136,6 +137,7 @@ export function buildRequest({ type, id = newId(), files, reference, impeccableR
     },
     app: app ? { name: app.name, path: app.path } : null,
     ...(type === 'send' ? { destination: app ? 'existing' : 'new', items: items ?? [] } : {}),
+
     compose: compose ? { id: compose.id, title: compose.title } : null,
     request: text ?? null,
     attachment: attachment ?? null,
@@ -186,11 +188,11 @@ export function steerMessage(request, requestFile) {
         : "Congo's Library (nothing selected: find the closest app or screens)";
       const forApp = request.app ? ` for the user's app at ${request.app.path}` : ' for a new app';
       const note = request.request ? ` The user's note: "${clip(request.request, 1500)}".` : '';
-      lead = `Make one running prototype${forApp} from ${what}.${note} Each item's note is in the request file. Main screen first: adapt the main screen or workflow, build the preview and reply; the rest waits for Expand. It goes in the Congo file the request names, outside the user's project.`;
+      lead = `Make one running prototype${forApp} from ${what}.${note} Each item's note is in the request file. Build as much as they asked for; when that is open, prefer one main screen first. It goes in the Congo file the request names, outside the user's project.`;
       break;
     }
     case 'compose':
-      lead = `Make one running prototype for this request: "${clip(request.request, 1500)}"${request.app ? ` (app: ${request.app.name})` : ''}. Main screen first; several side by side only if the user asked for that (a redesign or "a few directions"). It goes in the Congo file the request names, outside the user's project.`;
+      lead = `Make one running prototype for this request: "${clip(request.request, 1500)}"${request.app ? ` (app: ${request.app.name})` : ''}. Build as much as they asked for; when that is open, prefer one main screen first. Several side by side only if the user asked for that. It goes in the Congo file the request names, outside the user's project.`;
       break;
     case 'expand':
       lead = `Expand the prototype "${clip(request.design?.title, 120)}": build out the rest of the app around its main screen, in the same prototype (${request.design?.dir ?? 'its folder'}), then rebuild its preview with status ready.`;
@@ -199,7 +201,7 @@ export function steerMessage(request, requestFile) {
       lead = `Make a new prototype from "${clip(request.design?.title, 120)}": ${request.action.brief}. Keep the original; write the result into the folder the request names.`;
       break;
     case 'library':
-      lead = `${request.action ? `${request.action.label} on` : 'Prototype'} the Congo ${request.item.kind} "${clip(request.item.title, 120)}"${request.item.app ? ` from ${request.item.app}` : ''}. Get its source through the Congo CLI or MCP, adapt it outside the user's project, main screen first, and write one running prototype into the Congo file folder the request names.`;
+      lead = `${request.action ? `${request.action.label} on` : 'Prototype'} the Congo ${request.item.kind} "${clip(request.item.title, 120)}"${request.item.app ? ` from ${request.item.app}` : ''}. Get its source through the Congo CLI or MCP, adapt it outside the user's project, and write one running prototype into the Congo file folder the request names.`;
       break;
     case 'build':
       lead = `Pull into a project: ${request.app ? `apply the prototype "${clip(request.design?.title, 120)}" to the user's project at ${request.app.path}` : `create the user's new project from the prototype "${clip(request.design?.title, 120)}" with congo create`}. This is the only request that changes the user's code. Ask in your chat if the project or page is unclear.`;

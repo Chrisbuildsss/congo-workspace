@@ -18,7 +18,7 @@ An optional helper for the Congo workspace. It finds product ideas and prototype
    If none of these is given, ask which, in one short question.
 2. **Find real problems, briefly.** A few minutes with the tools you have (web search and fetch when available; otherwise what you know, said as such): what people in that field do by hand, pay too much for, or complain about; what the user's own projects already do that others would pay for.
 3. **List a few ideas, then choose.** Write three to five ideas, one line each: who it is for and what it does. Rank them by how real the problem is, how reachable the customers are, and how well it fits what this user can build. Tell the user the list and which you will prototype.
-4. **Prototype the strongest** with the `congo` skill: the closest app in the Library for the job, main screen first. One prototype by default. When the user asked for several ("three ideas"), prototype that many, in one Congo file.
+4. **Prototype the strongest** with the `congo` skill: the closest app in the Library for the job, its main screen only, adapted fast (Expand builds out the rest). One prototype by default. When the user asked for several ("three ideas"), prototype that many, in one Congo file.
 5. **Write a brief** into each prototype's `prototype.json`, as the `congo` skill's reference describes:
    - `who`: who needs it;
    - `why`: why it fits this user (their work, their interests, what they asked);

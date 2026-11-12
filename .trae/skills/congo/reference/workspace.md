@@ -12,7 +12,7 @@ The workspace sends the user's actions to you through Impeccable's live helper a
 
 ## Every request
 
-- Read the request file named in the message (`requests/<id>.json` in the working area). It holds the type, the user's words (`request`), the project it is for (`app.path`, or null), any Library `items` or `item`, the prototype (`design`), the `action`, and `outputs`.
+- Read the request file named in the message (`requests/<id>.json` in the working area). If the file is gone, the user cancelled that request in the workspace: do nothing for it and poll again. It holds the type, the user's words (`request`), the project it is for (`app.path`, or null), any Library `items` or `item`, the prototype (`design`), the `action`, and `outputs`.
 - **How much to build is the user's call,** read from what they picked and said: a whole app when they want an app, a screen when they want a screen. When it is open (ideas, options, anything unclear), prefer one main screen of the closest app, adapted fast; Expand does the rest once they choose. Finish with `--status ready` when the whole prototype is adapted and `--status main` when it started from a screen, which gives the user Expand.
 - Each output is a prototype folder in a Congo file: `outputs[i].dir`, with `preview` (where the running build goes), `source` (the working source) and `meta` (`prototype.json`). The workspace already shows a placeholder card for it.
 - **The conversation is this chat.** The local workspace has no chat. Above each request's prototypes it shows what the user asked and the one line you reply with, and nothing else. So when a request arrives, first tell the user here what came in from the workspace, in their words (what they selected, their notes, what they typed), then do it and report here as you would for anything they typed to you.
@@ -41,7 +41,7 @@ A folder in a Congo file:
 3. `WS preview <outputs[0].dir> --status main|ready --json`, then add `title`, `summary`, `source`, `sources` and `notices` to `prototype.json` (keep the fields already there).
 4. Reply with one line: what is adapted and, for `main`, that Expand builds out the rest.
 
-**One page or screen** (no whole app needed): write a static `preview/index.html` that holds the page's markup, with its stylesheets, fonts and images beside it and only the scripts its interactions need, then set `status` to `ready`. Keep the markup in the file, one element per line, so Impeccable's editor can pick in it.
+**One page or screen** (no whole app needed, or no subscription for Library source): write a static `preview/index.html` that holds the page's markup, with its stylesheets, fonts and images beside it and only the scripts its interactions need, then set `status` to `ready`. Keep the markup in the file, one element per line, so Impeccable's editor can pick in it.
 
 **A brief** goes on product ideas only (something the user could build a business or product on), never on design-only prototypes such as a redesign or a quick action. In `prototype.json`:
 
@@ -67,7 +67,7 @@ The user selected apps and screens in Explore and pressed Send. `items` lists ea
    - screens for the user's existing project: start from a copy of that project's page when you can read it, else from the screen's app, matched to the project's styles;
    - screens from several apps: start from the app that fits the product best and fit the others into it, in its tokens;
    - nothing selected: search the Library for the closest app or screens.
-2. **Get the source** with `WS prepare` for the app you start from. For a screen from another app, read it from a scratch project (`congo init --new`, then `congo add`) and rebuild it in the app's own code, keeping its notices; `congo add` into the app is fine when it accepts the screen. If `congo whoami` shows the user is not signed in or not subscribed, tell them here to run `congo login` themselves or subscribe, and reply `error "Needs Congo sign-in and a subscription"`.
+2. **Get the source** with `WS prepare` for the app you start from. For a screen from another app, read it from a scratch project (`congo init --new`, then `congo add`) and rebuild it in the app's own code, keeping its notices; `congo add` into the app is fine when it accepts the screen. If `congo whoami --json` shows the user is not signed in or has no active subscription, Library source is not available: tell them here in a line (`congo login`, or subscribe at buildwithcongo.com/pricing), then build the prototype with your own tools as a static page (below) and reply `steer_done` as usual. Do not fail the request for this.
 3. **Build as much as they asked for** (above).
 
 ## `library`: one Explore item

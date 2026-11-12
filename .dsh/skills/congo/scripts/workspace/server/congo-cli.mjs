@@ -1,6 +1,7 @@
 // The person's own Congo CLI, run as a subprocess. The workspace never reads
 // the CLI's sign-in: the CLI uses its saved sign-in itself and prints only
-// catalog data. Used for the Library's Saved filter (`congo saved`).
+// catalog data. Used for the Library's Saved filter (`congo saved`) and to ask
+// whether the account has a subscription (`congo whoami`).
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
@@ -96,4 +97,35 @@ export async function savedItems({ env = process.env, run = runCongo } = {}) {
     return { available: true, signedIn: null, ids: [], slugs: [], reason: result.error.message };
   }
   return { available: true, signedIn: null, ids: [], slugs: [], reason: firstLine(result.stderr) || firstLine(result.stdout) || 'The Congo CLI could not list your Saved items' };
+}
+
+/**
+ * Whether Explore may show the Library: the person's own CLI says whether the
+ * signed-in account has an active subscription (`congo whoami --json`). Only
+ * the yes or no is kept; the email is never read into the workspace.
+ *
+ * This is a courtesy gate in open-source code, not protection: anyone can
+ * change it. What protects Library source is Congo's server, which refuses a
+ * source pull without a subscription whatever this says.
+ *
+ * Never throws. `state` is one of active, no-subscription, signed-out, no-cli,
+ * unknown; `reason` is a line the workspace shows for the last one.
+ */
+export async function libraryAccess({ env = process.env, run = runCongo } = {}) {
+  const result = await run(['whoami', '--json'], { env });
+  const output = `${result.stdout}\n${result.stderr}`;
+  const missing = result.error?.code === 'ENOENT'
+    || /is not recognized as an internal or external command|command not found/i.test(output);
+  if (missing) return { allowed: false, state: 'no-cli', reason: null };
+  if (result.code === 0) {
+    try {
+      const active = JSON.parse(result.stdout)?.subscription?.active === true;
+      return { allowed: active, state: active ? 'active' : 'no-subscription', reason: null };
+    } catch {
+      return { allowed: false, state: 'unknown', reason: 'The Congo CLI returned something unexpected' };
+    }
+  }
+  if (/Sign in required/i.test(output)) return { allowed: false, state: 'signed-out', reason: null };
+  if (result.error?.code === 'ETIMEDOUT') return { allowed: false, state: 'unknown', reason: result.error.message };
+  return { allowed: false, state: 'unknown', reason: firstLine(result.stderr) || firstLine(result.stdout) || 'The Congo CLI could not check your account' };
 }

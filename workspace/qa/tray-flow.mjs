@@ -32,7 +32,7 @@ const at = (route) => {
 };
 
 fs.mkdirSync(out, { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 const report = { selected: [], tray: null, shots: [], errors: [] };
 try {
   if (select) {

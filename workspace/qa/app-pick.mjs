@@ -24,7 +24,7 @@ if (!url || !helper || !token) {
 }
 
 const result = { url, handshake: false, picked: null, queued: false, events: [], errors: [] };
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on('pageerror', (e) => result.errors.push(String(e)));

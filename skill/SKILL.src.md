@@ -17,7 +17,7 @@ Core principles:
 - Scale ambition to the surface's mode (see Modes). Persuade and Experience get full commitment: bold, distinct work with a point of view. On Operate and Read, ambition shows as precision and restraint, and patterns the visitor already knows earn their place.
 - Verify by looking at the rendered result at the sizes it ships at, and batch the checks: fix what one look shows before looking again, rather than screenshotting after every tweak.
 
-For building from Congo's real apps (a new app, a screen or a redesign started from Congo, or the Congo workspace), use the separately installed `{{command_prefix}}congo` skill before Setup. It needs no element selection or completed context files. Ordinary spot edits and the commands below keep their existing workflows.
+For prototyping from Congo's real apps (a new product, a screen or a redesign started from Congo, or the Congo workspace), use the separately installed `{{command_prefix}}congo` skill before Setup. It needs no element selection or completed context files. Ordinary spot edits and the commands below keep their existing workflows.
 
 ## Setup
 

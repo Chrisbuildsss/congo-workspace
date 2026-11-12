@@ -29,9 +29,11 @@ function parseRoute(path: string): Route {
   if (first === "prototypes" || first === "compose") return { name: "compose" };
   if (first === "projects") return { name: "projects", id: second || undefined };
   if (first === "live") return { name: "live" };
-  if (first === "library" && second === "screens") return { name: "library", mode: "screens" };
-  if (first === "library" && second === "saved") return { name: "library", mode: "saved" };
-  if (first === "library" && second === "apps" && third) {
+  // Explore is the former Library; old /library links still work.
+  const explore = first === "explore" || first === "library";
+  if (explore && second === "screens") return { name: "library", mode: "screens" };
+  if (explore && second === "saved") return { name: "library", mode: "saved" };
+  if (explore && second === "apps" && third) {
     return { name: "library", mode: "apps", app: decodeURIComponent(third) };
   }
   return { name: "library", mode: "apps" };
@@ -41,8 +43,8 @@ function routePath(route: Route) {
   if (route.name === "compose") return "/prototypes";
   if (route.name === "projects") return route.id ? `/projects/${route.id}` : "/projects";
   if (route.name === "live") return "/live";
-  if (route.app) return `/library/apps/${encodeURIComponent(route.app)}`;
-  return route.mode === "screens" ? "/library/screens" : route.mode === "saved" ? "/library/saved" : "/library";
+  if (route.app) return `/explore/apps/${encodeURIComponent(route.app)}`;
+  return route.mode === "screens" ? "/explore/screens" : route.mode === "saved" ? "/explore/saved" : "/explore";
 }
 
 function scrollTop() {
@@ -87,7 +89,8 @@ export default function App() {
   const [offline, setOffline] = useState(false);
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [chatPrompt, setChatPrompt] = useState("");
-  const [chatOpen, setChatOpen] = useState(true);
+  // On a phone the prototypes come first; the conversation opens from the header.
+  const [chatOpen, setChatOpen] = useState(() => window.innerWidth > 764);
   const [detail, setDetail] = useState<{
     design: Design;
     context?: string;
@@ -96,7 +99,12 @@ export default function App() {
     bundled?: boolean;
     /** A whole-app prototype edited on its source's dev server. */
     appEdit?: boolean;
+    /** An Explore item shown running (its hosted preview) instead of its screenshot. */
+    preview?: boolean;
   } | null>(null);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [pullFor, setPullFor] = useState<Design | null>(null);
+  const [pullFolder, setPullFolder] = useState("");
   // The request tray (kept in the workspace) and where Send's result is for.
   const [tray, setTrayState] = useState<Tray>({ items: [], note: "" });
   const trayLoaded = useRef(false);
@@ -147,7 +155,7 @@ export default function App() {
   }, [hasToken, refresh]);
 
   useEffect(() => {
-    if (window.location.pathname === "/") window.history.replaceState({}, "", "/library");
+    if (window.location.pathname === "/") window.history.replaceState({}, "", "/explore");
     const onPopState = () => {
       setDetail(null);
       setRoute(parseRoute(window.location.pathname));
@@ -376,7 +384,7 @@ export default function App() {
     }
   };
 
-  /** Send from the Library tray: the selected items, their notes and the request note. */
+  /** Send from the Explore tray: the selected items, their notes and the request note. */
   const sendTray = async (values: ComposerValues) => {
     if (!aiConnected) {
       showToast("Connect your AI first");
@@ -398,27 +406,54 @@ export default function App() {
     return compose?.appId ? state?.apps.find((app) => app.id === compose.appId) ?? null : null;
   };
 
-  /** Use this: the only action that changes the person's project. */
-  const useDesign = async (design: Design) => {
-    const app = designApp(design);
+  /**
+   * Pull into a project: the only action that changes a code project. The
+   * person chooses an attached project, a folder to attach, or a new project.
+   */
+  const pullDesign = async (design: Design, target: { appId: string | null; folder?: string }) => {
+    let appId = target.appId;
+    try {
+      if (target.folder) {
+        const attached = await api<{ app: { id: string }; state: WorkspaceState }>("/api/apps", { path: target.folder });
+        setState(attached.state);
+        appId = attached.app.id;
+      }
+    } catch (error) {
+      showToast((error as Error).message);
+      return;
+    }
+    const app = state?.apps.find((item) => item.id === appId);
     const compose = state?.composes.find((c) => c.designIds.includes(design.id));
     const result = await sendRequest(
-      { type: "build", designId: design.id, composeId: compose?.id },
+      { type: "build", designId: design.id, composeId: compose?.id, appId },
       false,
-      app ? `Your AI is putting it into ${app.name}` : "Your AI is creating your new app",
+      appId ? `Your AI is pulling it into ${app?.name ?? "your project"}` : "Your AI is creating a new project from it",
     );
-    if (result) navigate({ name: "live" });
+    if (result) {
+      setPullFor(null);
+      setPullFolder("");
+    }
+  };
+
+  /** Opening a prototype or a preview fills the workspace: the side panel closes. */
+  const openDetail = (next: NonNullable<typeof detail>) => {
+    setChatOpen(false);
+    setBriefOpen(false);
+    setDetail(next);
   };
 
   const handleCardAction = (action: CardAction, design: Design) => {
     if (action === "preview") {
-      const url = design.previewUrl ?? (design.local ? designUrl(design, status?.contentOrigin ?? "") : null);
+      // Explore: the running item, full size, in its own tab. Congo's preview
+      // host only lets Congo's own sites embed previews, so a local workspace
+      // cannot show them in a frame.
+      const url = design.local ? designUrl(design, status?.contentOrigin ?? "") : design.previewUrl;
       if (url) window.open(url, "_blank", "noopener,noreferrer");
       else showToast("No preview for this item");
       return;
     }
     if (action === "open" || action === "edit") {
-      setDetail({ design, context: activeCompose?.title ?? design.author });
+      openDetail({ design, context: design.local ? "Prototypes" : design.author });
       return;
     }
     if (action === "delete") {
@@ -448,7 +483,12 @@ export default function App() {
       return;
     }
     if (action === "build") {
-      void useDesign(design);
+      setPullFolder("");
+      setPullFor(design);
+      return;
+    }
+    if (action === "expand") {
+      void sendRequest({ type: "expand", designId: design.id }, false, "Your AI is building out the rest of the app");
       return;
     }
     // Quick actions make a new prototype beside the original.
@@ -535,7 +575,7 @@ export default function App() {
               onMode={(mode) => navigate({ name: "library", mode })}
               onOpenApp={(slug) => navigate({ name: "library", mode: "apps", app: slug })}
               onBack={() => navigate({ name: "library", mode: "apps" })}
-              onOpenItem={(design, context) => setDetail({ design, context })}
+              onOpenItem={(design, context) => openDetail({ design, context })}
               onAction={handleCardAction}
               selected={traySelected}
               onToggleSelect={toggleTray}
@@ -615,7 +655,7 @@ export default function App() {
               onSend={(values) => void send(values)}
               requests={state.requests}
               onAppChange={setProtoAppId}
-              onOpenDesign={(design) => setDetail({ design, context: "Prototypes" })}
+              onOpenDesign={(design) => openDetail({ design, context: "Prototypes" })}
               onCardAction={handleCardAction}
             />
           ) : null}
@@ -635,7 +675,7 @@ export default function App() {
               appId={trayDestination}
               onAppChange={setTrayAppId}
               noAppLabel="A new app"
-              noAppHint="Your AI starts it from the closest Congo app"
+              noAppHint="A prototype for something new"
               hasItems={tray.items.length > 0}
               header={
                 <RequestTray
@@ -661,7 +701,6 @@ export default function App() {
                 ? state?.requests.find((r) => r.type === "live-edit" && r.designId === design.id) ?? null
                 : null;
               const editFailed = Boolean(detail.appEdit && lastEdit?.status === "error");
-              const app = design.local ? designApp(design) : null;
               const describe = design.local && (detail.bundled || editFailed)
                 ? (text: string) => {
                     void sendRequest(
@@ -694,9 +733,21 @@ export default function App() {
                         }
                       : undefined
                   }
-                  onUse={design.local ? () => void useDesign(design) : undefined}
-                  useNote={design.local ? (app ? `Puts it into ${app.name}` : "Creates your new app with congo create") : undefined}
-                  frameDesign={detail.appEdit && design.editUrl ? { ...design, src: design.editUrl } : undefined}
+                  onPull={design.local ? () => { setPullFolder(""); setPullFor(design); } : undefined}
+                  onExpand={design.local && design.status === "main" && aiConnected ? () => handleCardAction("expand", design) : undefined}
+                  expanding={design.status === "expanding"}
+                  briefOpen={briefOpen}
+                  onBrief={design.brief ? () => setBriefOpen((value) => !value) : undefined}
+                  panelOpen={route.name === "compose" ? chatOpen : undefined}
+                  onPanel={route.name === "compose" ? () => setChatOpen(!chatOpen) : undefined}
+                  onPrototype={!design.local && aiConnected ? () => handleCardAction("use", design) : undefined}
+                  frameDesign={
+                    detail.appEdit && design.editUrl
+                      ? { ...design, src: design.editUrl }
+                      : detail.preview && design.previewUrl
+                        ? { ...design, src: design.previewUrl, image: undefined }
+                        : undefined
+                  }
                   waitingNote={
                     detail.appEdit && detail.editing && !design.editUrl && !editFailed
                       ? "Your AI is starting this prototype's source with Impeccable's editor. It appears here when it's ready."
@@ -747,10 +798,56 @@ export default function App() {
           <div className="confirm-overlay" onMouseDown={() => setDeleteFor(null)}>
             <div className="confirm-card" onMouseDown={(event) => event.stopPropagation()}>
               <h2>Delete this prototype?</h2>
-              <p>“{deleteFor.title}” and its files in the workspace are removed. Your app is not touched.</p>
+              <p>“{deleteFor.title}” is removed from its Congo file{deleteFor.file ? ` (${deleteFor.file})` : ""}, with its source and preview. No code project is touched.</p>
               <div>
                 <button type="button" onClick={() => setDeleteFor(null)}>Cancel</button>
                 <button type="button" className="danger" onClick={() => void deleteDesign()}>Delete</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {pullFor && state ? (
+          <div className="confirm-overlay" onMouseDown={() => setPullFor(null)}>
+            <div className="confirm-card pull-card" onMouseDown={(event) => event.stopPropagation()}>
+              <h2>Pull into a project</h2>
+              <p>
+                Your AI puts “{pullFor.title}” into a code project. The prototype stays in its Congo file. Nothing else in the
+                project changes.
+              </p>
+              <ul className="pull-list">
+                {state.apps.map((app) => (
+                  <li key={app.id}>
+                    <button type="button" disabled={!aiConnected} onClick={() => void pullDesign(pullFor, { appId: app.id })}>
+                      <b>{app.name}</b>
+                      <small>{app.path}</small>
+                    </button>
+                  </li>
+                ))}
+                <li>
+                  <button type="button" disabled={!aiConnected} onClick={() => void pullDesign(pullFor, { appId: null })}>
+                    <b>A new project</b>
+                    <small>Your AI creates it with congo create and tells you where it is</small>
+                  </button>
+                </li>
+              </ul>
+              <form
+                className="library-search confirm-input"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (pullFolder.trim()) void pullDesign(pullFor, { appId: null, folder: pullFolder.trim() });
+                }}
+              >
+                <input
+                  value={pullFolder}
+                  onChange={(event) => setPullFolder(event.target.value)}
+                  placeholder="Or paste an existing project folder and press Enter"
+                  aria-label="Existing project folder"
+                />
+              </form>
+              <div>
+                {aiConnected ? null : <span className="composer-note">Needs a connected AI</span>}
+                <button type="button" onClick={() => setPullFor(null)}>Cancel</button>
               </div>
             </div>
           </div>

@@ -52,7 +52,7 @@ async function until(check, label, ms = waitMs, every = 2000) {
 }
 
 const report = { selected: [], timings: {}, send: null, prototype: null, use: null, app: null, errors: [] };
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 page.on('pageerror', (e) => report.errors.push(String(e)));
 try {

@@ -28,7 +28,7 @@ const sizes = [
 const schemes = ['light', 'dark'];
 
 fs.mkdirSync(out, { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 const results = [];
 try {
   for (const scheme of schemes) {

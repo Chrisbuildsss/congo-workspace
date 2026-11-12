@@ -36,6 +36,23 @@ export interface Design {
   sourceDir?: string;
   /** While the person edits it: the source's dev server with Impeccable's editor. */
   editUrl?: string;
+  /** Its folder in a Congo file, and that file's name. */
+  dir?: string;
+  file?: string;
+  /** adapting: no preview yet; main: the main screen is adapted; expanding; ready; error. */
+  status?: "adapting" | "main" | "expanding" | "ready" | "error";
+  error?: string;
+  /** Product ideas carry a short brief; design-only prototypes have none. */
+  brief?: Brief;
+  builtAt?: string;
+}
+
+export interface Brief {
+  who?: string;
+  why?: string;
+  supports?: string;
+  next?: string;
+  text?: string;
 }
 
 /** A Library app or screen in the request tray, with the person's note. */
@@ -142,11 +159,13 @@ export interface WorkspaceState {
   projects: Project[];
   requests: WorkspaceRequest[];
   tray: Tray;
+  /** Where Congo files are kept on this computer. */
+  filesRoot?: string;
 }
 
 export interface WorkspaceRequest {
   id: string;
-  type: "send" | "compose" | "tweak" | "build" | "library" | "start-app" | "live-edit" | "rebuild" | "switch-to-area";
+  type: "send" | "compose" | "tweak" | "expand" | "build" | "library" | "start-app" | "live-edit" | "rebuild" | "switch-to-area";
   status: "sent" | "done" | "error";
   composeId: string | null;
   appId?: string | null;

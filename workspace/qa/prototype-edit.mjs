@@ -28,7 +28,7 @@ const log = (step, extra = {}) => console.log(JSON.stringify({ step, seconds: Ma
 const state = () => fetch(`${origin}/api/state`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
 if (shots) fs.mkdirSync(shots, { recursive: true });
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const shot = async (name) => { if (shots) await page.screenshot({ path: path.join(shots, `${name}.png`) }); };

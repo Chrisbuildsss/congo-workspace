@@ -23,7 +23,7 @@ const hash = url.hash;
 url.hash = '';
 url.pathname = '/prototypes';
 const report = { card: false, opened: false, frame: null, steps: [], errors: [] };
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on('pageerror', (e) => report.errors.push(String(e)));

@@ -68,12 +68,12 @@ export function Sidebar({
   const connected = Boolean(status?.ai.connected);
   const aiLabel = status ? (connected ? "Connected" : "Not connected") : "Checking";
 
-  // Three places: Library, Prototypes (the former Compose) and My app.
-  // Projects stays in the code, hidden, for cloud saving later.
+  // Two tabs: Explore (the Library) and Prototypes. My app and Projects stay
+  // in the code, hidden.
   const nav = [
     {
       key: "library" as const,
-      label: "Library",
+      label: "Explore",
       icon: <LibraryIcon size={20} />,
       action: () => onNavigate("library"),
       hidden: false,
@@ -97,7 +97,7 @@ export function Sidebar({
       label: "My app",
       icon: <LiveAppIcon size={20} />,
       action: () => onNavigate("live"),
-      hidden: false,
+      hidden: true,
     },
   ].filter((item) => !item.hidden);
 

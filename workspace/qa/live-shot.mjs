@@ -15,7 +15,7 @@ base.pathname = '/live';
 const wait = Number(arg('wait', '8000'));
 const shot = arg('shot', '');
 const report = { frame: null, text: null, errors: [], console: [] };
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CONGO_QA_CHANNEL ? { channel: process.env.CONGO_QA_CHANNEL } : {});
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on('pageerror', (e) => report.errors.push(String(e)));

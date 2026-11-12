@@ -1,19 +1,21 @@
 import Composer, { type ComposerValues } from "../components/Composer";
-import DesignCard, { type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
+import DesignCard, { TWEAKS, type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
 import { PanelIcon, SearchIcon } from "../Icons";
 import type { AppRef, ChatMessage, Compose, Design, WorkspaceRequest } from "../types";
 
 // Prototypes is the former Compose: everything the AI makes lands here as a
-// card, one request per group, newest first. Nothing changes the person's
-// project until Use this.
-const USE_THIS: QuickAction = { key: "build", label: "Use this", icon: "↗" };
+// card, one request per group, newest first. Prototypes live in Congo files;
+// nothing changes a code project until Pull into a project.
+const PULL: QuickAction = { key: "build", label: "Pull into a project", icon: "↗" };
+const EXPAND: QuickAction = { key: "expand", label: "Expand", icon: "⤢" };
 
-/** Requests whose results are new prototypes (Use this changes the app instead). */
+/** Requests whose results are new prototypes (Pull into a project changes a project instead). */
 const PROTOTYPE_REQUESTS: WorkspaceRequest["type"][] = ["send", "compose", "tweak", "library"];
 
 const CARD_MENU: MenuItem[] = [
   { key: "open", label: "Open" },
   { key: "preview", label: "Open in new tab" },
+  { key: "build", label: "Pull into a project" },
   { key: "rename", label: "Rename" },
   { key: "delete", label: "Delete", danger: true },
 ];
@@ -81,7 +83,7 @@ export default function PrototypesView({
   onCardAction: (action: CardAction, design: Design) => void;
 }) {
   // Requests this view reports on: new prototypes, Use this and rebuilds.
-  const open = requests.filter((r) => r.status === "sent" && [...PROTOTYPE_REQUESTS, "build", "rebuild"].includes(r.type));
+  const open = requests.filter((r) => r.status === "sent" && [...PROTOTYPE_REQUESTS, "build", "rebuild", "expand"].includes(r.type));
   const actionsNote = aiConnected ? undefined : "Needs a connected AI";
 
   // One group per request thread, newest first, each with its prototypes and
@@ -89,9 +91,11 @@ export default function PrototypesView({
   const groups = composes
     .map((compose) => {
       const cards = compose.designIds.map((id) => designs[id]).filter((d): d is Design => Boolean(d?.local));
+      // A prototype shows as a skeleton from the moment it is asked for until
+      // its first preview lands.
       const pending = open
         .filter((r) => r.composeId === compose.id && PROTOTYPE_REQUESTS.includes(r.type))
-        .reduce((sum, r) => sum + r.outputs.filter((id) => !compose.designIds.includes(id)).length, 0);
+        .reduce((sum, r) => sum + r.outputs.filter((id) => !designs[id]).length, 0);
       return { compose, cards, pending };
     })
     .filter((group) => group.cards.length > 0 || group.pending > 0);
@@ -107,8 +111,8 @@ export default function PrototypesView({
       pending: 0,
     });
   }
-  const total = groups.reduce((sum, group) => sum + group.cards.length, 0);
-  const applying = open.filter((r) => r.type === "build" || r.type === "rebuild");
+  const total = groups.reduce((sum, group) => sum + group.cards.filter((card) => card.src).length, 0);
+  const applying = open.filter((r) => r.type === "build" || r.type === "rebuild" || r.type === "expand");
 
   // The conversation across every request, oldest first.
   const messages: (ChatMessage & { composeId: string })[] = composes
@@ -152,7 +156,7 @@ export default function PrototypesView({
                 </div>
                 <p>
                   {aiConnected
-                    ? "Send apps or screens from the Library, or describe what you want. Your AI makes a running prototype and it appears here. Use this puts it into your app."
+                    ? "Send apps or screens from Explore, or describe what you want. Your AI makes a running prototype and it appears here. Pull into a project when you want it in your code."
                     : "Connect your AI to start: run /congo in its chat, or ask it to open the Congo workspace."}
                 </p>
                 <div className="suggestion-list">
@@ -195,7 +199,9 @@ export default function PrototypesView({
                 </div>
                 <p>
                   {applying.some((r) => r.type === "build")
-                    ? "Your AI is putting a prototype into your app. Follow along in its chat; it shows in My app when it's done."
+                    ? "Your AI is pulling a prototype into a project. Follow along in its chat; it says here where it went."
+                    : applying.some((r) => r.type === "expand")
+                      ? "Your AI is building out the rest of the app in the same prototype."
                     : applying.some((r) => r.type === "rebuild")
                       ? "Your AI is rebuilding the prototype with your edits."
                       : "Your AI picks this up in its own chat. Prototypes appear here as they are ready."}
@@ -214,7 +220,7 @@ export default function PrototypesView({
               appId={appId}
               onAppChange={onAppChange}
               noAppLabel="A new app"
-              noAppHint="Use this creates it with congo create"
+              noAppHint="A prototype for something new"
               compact
               disabled={!aiConnected}
               note={aiConnected ? undefined : "Needs a connected AI"}
@@ -237,20 +243,33 @@ export default function PrototypesView({
                     </span>
                   </header>
                   <div className="chat-design-grid">
-                    {cards.map((design) => (
-                      <DesignCard
-                        key={design.id}
-                        design={design}
-                        onOpen={() => onOpenDesign(design)}
-                        onAction={onCardAction}
-                        showAuthor={false}
-                        showSelect={false}
-                        primary={USE_THIS}
-                        showMore
-                        menuItems={CARD_MENU}
-                        actionsDisabledNote={actionsNote}
-                      />
-                    ))}
+                    {cards.map((design, index) =>
+                      !design.src && design.status !== "error" ? (
+                        <GeneratingCard key={design.id} index={index} />
+                      ) : design.status === "error" && !design.src ? (
+                        <div className="generating-card prototype-failed" key={design.id} role="status">
+                          <p>
+                            <b>{design.title}</b>
+                            {design.error ?? "Your AI could not finish this one."}
+                          </p>
+                          <button type="button" onClick={() => onCardAction("delete", design)}>Remove</button>
+                        </div>
+                      ) : (
+                        <DesignCard
+                          key={design.id}
+                          design={design}
+                          onOpen={() => onOpenDesign(design)}
+                          onAction={onCardAction}
+                          showAuthor={false}
+                          showSelect={false}
+                          primary={PULL}
+                          tweaks={design.status === "main" ? [EXPAND, ...TWEAKS] : TWEAKS}
+                          showMore
+                          menuItems={design.status === "main" ? [{ key: "expand", label: "Expand" }, ...CARD_MENU] : CARD_MENU}
+                          actionsDisabledNote={design.status === "expanding" ? "Your AI is building out the rest" : actionsNote}
+                        />
+                      ),
+                    )}
                     {Array.from({ length: pending }, (_, index) => <GeneratingCard key={index} index={index} />)}
                   </div>
                 </section>

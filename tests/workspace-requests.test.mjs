@@ -65,7 +65,7 @@ const fakeCongo = async (args) => {
   congoCalls.push(args);
   return { code: 0, stdout: JSON.stringify({ items: [{ id: 'crm-app', slug: 'crm', name: 'CRM', kind: 'app', url: 'https://example.test/websites/crm', savedAt: null }], total: 1, offset: 0, limit: 100 }), stderr: '' };
 };
-const server = await startWorkspaceServer({ root, uiDir, port: 4975, token: 't', bootHelper: false, runCongo: fakeCongo });
+const server = await startWorkspaceServer({ root, uiDir, port: 4975, token: 't', bootHelper: false, filesDir: path.join(tmp, 'congo-files'), runCongo: fakeCongo });
 const base = `http://127.0.0.1:${server.record.port}`;
 const content = `http://127.0.0.1:${server.record.contentPort}`;
 after(async () => {
@@ -95,11 +95,34 @@ async function until(check, label, ms = 8000) {
   throw new Error(`timed out waiting for ${label}`);
 }
 
+const congoFiles = path.join(tmp, 'congo-files');
+
+/** The prototype's folder in its Congo file, once a request created it. */
+function prototypeDir(id) {
+  if (!fs.existsSync(congoFiles)) return null;
+  for (const file of fs.readdirSync(congoFiles)) {
+    const dir = path.join(congoFiles, file, id);
+    if (fs.existsSync(dir)) return dir;
+  }
+  return null;
+}
+
+// What the AI does: write the preview, then the metadata. Prototypes a request
+// made live in a Congo file; anything else lands in the older working area.
 function writeDesign(id, meta, html = '<!doctype html><title>d</title><main>design</main>') {
+  const proto = prototypeDir(id);
+  if (proto) {
+    fs.mkdirSync(path.join(proto, 'preview'), { recursive: true });
+    fs.writeFileSync(path.join(proto, 'preview', 'index.html'), html);
+    const current = JSON.parse(fs.readFileSync(path.join(proto, 'prototype.json'), 'utf8'));
+    fs.writeFileSync(path.join(proto, 'prototype.json'), JSON.stringify({ ...current, status: 'ready', ...meta }));
+    return proto;
+  }
   const dir = path.join(area, 'designs', id);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'index.html'), html);
   fs.writeFileSync(path.join(dir, 'design.json'), JSON.stringify(meta));
+  return dir;
 }
 
 let composeId;
@@ -135,8 +158,12 @@ test('designs the AI writes become cards; steer_done closes the request with its
   writeDesign(`${firstRequest}-1`, { title: 'Airy rows', summary: 'More room.' });
   const state = await until(async () => {
     const s = (await api('/api/state')).value;
-    return s.composes.find((c) => c.id === composeId).designIds.includes(`${firstRequest}-1`) && s;
+    return s.designs[`${firstRequest}-1`]?.src && s;
   }, 'design card');
+  assert.ok(state.composes.find((c) => c.id === composeId).designIds.includes(`${firstRequest}-1`));
+  assert.equal(state.designs[`${firstRequest}-1`].status, 'ready');
+  assert.ok(state.designs[`${firstRequest}-1`].dir.startsWith(congoFiles), 'kept in a Congo file, not the working area');
+  assert.match(path.basename(path.dirname(state.designs[`${firstRequest}-1`].dir)), /\.congo$/);
   const design = state.designs[`${firstRequest}-1`];
   assert.equal(design.src, `/designs/${firstRequest}-1/`);
   assert.equal(design.local, true);
@@ -161,11 +188,12 @@ test('a tweak names the Impeccable command and keeps the original as the parent'
   writeDesign(`${id}-1`, { title: 'Airy rows · Bolder' });
   const state = await until(async () => {
     const s = (await api('/api/state')).value;
-    return s.designs[`${id}-1`] && s;
+    return s.designs[`${id}-1`]?.src && s;
   }, 'tweak card');
+  assert.equal(path.dirname(state.designs[`${id}-1`].dir), path.dirname(state.designs[`${firstRequest}-1`].dir), 'a quick action lands in the same Congo file');
   assert.equal(state.designs[`${id}-1`].parentId, `${firstRequest}-1`);
   assert.equal(state.designs[`${id}-1`].action, 'bolder');
-  assert.ok(fs.existsSync(path.join(area, 'designs', `${firstRequest}-1`, 'index.html')), 'original kept');
+  assert.ok(fs.existsSync(path.join(prototypeDir(`${firstRequest}-1`), 'preview', 'index.html')), 'original kept');
   assert.equal((await api('/api/requests', { type: 'tweak', designId: `${firstRequest}-1`, action: 'more:rm -rf' })).status, 400);
 });
 
@@ -180,7 +208,7 @@ test('a library action opens its own compose and never targets the user project'
   assert.equal(request.item.preview, null, 'only https previews pass');
   assert.ok(request.workspace.sources.startsWith(path.join(area, 'sources')));
   const steer = await until(() => steers.find((s) => s.id === value.request.id), 'library steer');
-  assert.match(steer.message, /Retrieve its source with the Congo CLI or MCP/);
+  assert.match(steer.message, /Get its source through the Congo CLI or MCP/);
   assert.match(steer.message, /outside the user's project/);
 });
 
@@ -188,7 +216,7 @@ test('more prototypes the AI adds for the same request join its group', async ()
   writeDesign(`${firstRequest}-2`, { title: 'Dense rows' });
   const state = await until(async () => {
     const s = (await api('/api/state')).value;
-    return s.composes.find((c) => c.id === composeId).designIds.includes(`${firstRequest}-2`) && s;
+    return s.designs[`${firstRequest}-2`]?.src && s.composes.find((c) => c.id === composeId).designIds.includes(`${firstRequest}-2`) && s;
   }, 'second prototype');
   assert.equal(state.designs[`${firstRequest}-2`].requestId, firstRequest);
 });
@@ -299,6 +327,92 @@ test("the Saved filter asks the person's own Congo CLI and reads only catalog id
   assert.deepEqual([out.available, out.signedIn], [true, false]);
   const missing = await savedItems({ run: async () => ({ code: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn congo ENOENT'), { code: 'ENOENT' }) }) });
   assert.match(missing.reason, /Install the Congo CLI/);
+});
+
+test('a prototype card exists the moment it is requested, then gains its preview, brief and status', async () => {
+  const thread = (await api('/api/composes', {})).value.compose.id;
+  const { value } = await api('/api/requests', { type: 'compose', composeId: thread, text: 'Software ideas for dentists' });
+  const id = value.request.id;
+  // Right away: a placeholder in a Congo file, with no preview yet.
+  const placeholder = value.state.designs[`${id}-1`];
+  assert.ok(placeholder, 'the card is in the state returned by the request itself');
+  assert.equal(placeholder.status, 'adapting');
+  assert.equal(placeholder.src, undefined);
+  const request = JSON.parse(fs.readFileSync(path.join(area, 'requests', `${id}.json`), 'utf8'));
+  assert.equal(request.outputs[0].dir, placeholder.dir);
+  assert.equal(request.outputs[0].preview, path.join(placeholder.dir, 'preview'));
+  assert.equal(request.outputs[0].source, path.join(placeholder.dir, 'source'));
+  assert.match(request.workspace.congoFile, /Software ideas for dentists\.congo$/);
+  assert.equal(request.workspace.congoFiles, congoFiles);
+  // The AI writes the main screen's preview and a brief.
+  writeDesign(`${id}-1`, { title: 'Recall reminders', status: 'main', brief: { who: 'Small dental offices', why: 'You build for clinics', supports: 'Front desks call by hand', next: 'Ask three offices' } });
+  const main = await until(async () => {
+    const d = (await api('/api/state')).value.designs[`${id}-1`];
+    return d?.src && d;
+  }, 'main screen');
+  assert.equal(main.status, 'main');
+  assert.equal(main.brief.who, 'Small dental offices');
+  assert.equal(main.file, 'Software ideas for dentists');
+  const history = fs.readFileSync(path.join(main.dir, 'history.jsonl'), 'utf8');
+  assert.match(history, /"type":"requested"/);
+});
+
+test('Expand builds out the same prototype; Pull into a project names where it goes', async () => {
+  const state = (await api('/api/state')).value;
+  const design = Object.values(state.designs).find((d) => d.title === 'Recall reminders');
+  assert.equal((await api('/api/requests', { type: 'expand', designId: design.id })).status, 409, 'a single page has nothing to expand');
+  fs.mkdirSync(path.join(design.dir, 'source'), { recursive: true });
+  fs.writeFileSync(path.join(design.dir, 'source', 'package.json'), '{"name":"proto"}');
+  await until(async () => (await api('/api/state')).value.designs[design.id].sourceDir, 'the prototype source');
+  const expand = await api('/api/requests', { type: 'expand', designId: design.id });
+  assert.equal(expand.status, 200, JSON.stringify(expand.value));
+  assert.equal(expand.value.state.designs[design.id].status, 'expanding');
+  assert.deepEqual(expand.value.request.outputs, [], 'the same prototype, not a new one');
+  const steer = await until(() => steers.find((s) => s.id === expand.value.request.id), 'expand steer');
+  assert.match(steer.message, /\(expand\)\. Expand the prototype "Recall reminders": build out the rest of the app/);
+  broadcast({ type: 'steer_done', id: expand.value.request.id, message: 'Built out.' });
+  await until(async () => (await api('/api/state')).value.designs[design.id].status === 'ready', 'expanded');
+
+  const project = path.join(tmp, 'my-project');
+  fs.mkdirSync(project);
+  const app = (await api('/api/apps', { path: project })).value.app;
+  const pull = await api('/api/requests', { type: 'build', designId: design.id, appId: app.id });
+  const pullSteer = await until(() => steers.find((s) => s.id === pull.value.request.id), 'pull steer');
+  assert.match(pullSteer.message, /\(build\)\. Pull into a project: apply the prototype "Recall reminders" to the user's project at /);
+  assert.ok(pullSteer.message.includes(project));
+  const fresh = await api('/api/requests', { type: 'build', designId: design.id, appId: null });
+  const freshSteer = await until(() => steers.find((s) => s.id === fresh.value.request.id), 'new project steer');
+  assert.match(freshSteer.message, /create the user's new project from the prototype "Recall reminders" with congo create/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(area, 'requests', `${fresh.value.request.id}.json`), 'utf8')).app, null);
+  assert.deepEqual(fs.readdirSync(project), [], 'asking changes nothing in the project');
+  assert.equal((await api('/api/requests', { type: 'build', designId: design.id, appId: 'nope' })).status, 404);
+});
+
+test('a Congo file can be moved or renamed: its prototypes follow, and still run', async () => {
+  const state = (await api('/api/state')).value;
+  const design = Object.values(state.designs).find((d) => d.title === 'Recall reminders');
+  const from = path.dirname(design.dir);
+  const to = path.join(congoFiles, 'Dental ideas.congo');
+  fs.renameSync(from, to);
+  const moved = await until(async () => {
+    const d = (await api('/api/state')).value.designs[design.id];
+    return d?.file === 'Dental ideas' && d;
+  }, 'the moved Congo file');
+  assert.equal(moved.dir, path.join(to, design.id));
+  assert.equal(moved.sourceDir, path.join(to, design.id, 'source'));
+  assert.match(await (await fetch(moved.src)).text(), /design/);
+  assert.doesNotMatch(fs.readFileSync(path.join(to, design.id, 'prototype.json'), 'utf8'), /congo-workspace-requests/, 'nothing in it points at where it was');
+});
+
+test('a request the AI fails leaves a plain failed card, not an endless placeholder', async () => {
+  const thread = (await api('/api/composes', {})).value.compose.id;
+  const { value } = await api('/api/requests', { type: 'compose', composeId: thread, text: 'Something impossible' });
+  broadcast({ type: 'error', id: value.request.id, message: 'Needs Congo sign-in and a subscription' });
+  const failed = await until(async () => {
+    const d = (await api('/api/state')).value.designs[`${value.request.id}-1`];
+    return d?.status === 'error' && d;
+  }, 'failed card');
+  assert.equal(failed.error, 'Needs Congo sign-in and a subscription');
 });
 
 test('an error reply is shown in the conversation', async () => {

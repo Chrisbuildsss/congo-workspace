@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { BookmarkIcon, EllipsisIcon } from "../Icons";
+import { BookmarkIcon, EllipsisIcon, InfoIcon } from "../Icons";
+import BriefPanel from "./BriefPanel";
 import type { Design } from "../types";
 import DesignFrame from "../DesignFrame";
 import { useClickOutside } from "./Ui";
@@ -15,6 +16,7 @@ export type CardAction =
   | "build"
   | "select"
   | "rename"
+  | "expand"
   | "subtle"
   | "layout"
   | "colorize"
@@ -112,6 +114,7 @@ export default function DesignCard({
   const [quickOpen, setQuickOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  const [briefOpen, setBriefOpen] = useState(false);
   const menuRef = useClickOutside<HTMLDivElement>(menuOpen, () => setMenuOpen(false));
   const quickRef = useClickOutside<HTMLDivElement>(quickOpen, () => {
     setQuickOpen(false);
@@ -187,7 +190,24 @@ export default function DesignCard({
         </span>
       </div>
 
+      {design.brief && briefOpen ? <BriefPanel brief={design.brief} className="card-brief" /> : null}
+
       <div className="card-top-actions">
+        {design.brief ? (
+          <button
+            type="button"
+            className="card-icon-button card-info-button"
+            aria-label={briefOpen ? "Hide the brief" : "Show the brief"}
+            aria-expanded={briefOpen}
+            data-active={briefOpen || undefined}
+            onClick={(event) => {
+              event.stopPropagation();
+              setBriefOpen((value) => !value);
+            }}
+          >
+            <InfoIcon />
+          </button>
+        ) : null}
         {menuItems.length > 0 ? (
           <div className="card-menu-wrap" ref={menuRef}>
             <button

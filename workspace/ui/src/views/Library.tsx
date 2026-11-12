@@ -11,12 +11,12 @@ export type LibraryMode = "apps" | "screens" | "saved";
 
 const PAGE = 24;
 
-const USE_THIS: QuickAction = { key: "use", label: "Use this", icon: "↘" };
+const PROTOTYPE_THIS: QuickAction = { key: "use", label: "Prototype this", icon: "↘" };
 
 function menuFor(selected: boolean): MenuItem[] {
   return [
     { key: "select", label: selected ? "Remove from request" : "Select" },
-    { key: "use", label: "Use this" },
+    { key: "use", label: "Prototype this" },
     { key: "preview", label: "Preview" },
   ];
 }
@@ -410,7 +410,7 @@ export default function LibraryView({
                   design={design}
                   onOpen={() => onOpenItem(design, screen.app?.name)}
                   onAction={(action, card) => (action === "select" ? onToggleSelect(item) : onAction(action, card))}
-                  primary={USE_THIS}
+                  primary={PROTOTYPE_THIS}
                   showMore
                   actionsDisabledNote={actionsNote}
                   menuItems={menuFor(isSelected)}
@@ -430,7 +430,7 @@ export default function LibraryView({
                   design={design}
                   onOpen={() => onOpenApp(app.slug)}
                   onAction={(action, card) => (action === "select" ? onToggleSelect(item) : onAction(action, card))}
-                  primary={USE_THIS}
+                  primary={PROTOTYPE_THIS}
                   showMore
                   actionsDisabledNote={actionsNote}
                   menuItems={menuFor(isSelected)}

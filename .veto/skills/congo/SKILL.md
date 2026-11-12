@@ -1,53 +1,55 @@
 ---
 name: congo
-description: "Design and build with real apps in the local Congo workspace: start a new app from the closest Congo apps, design a new screen, or redesign a page or a whole app, with working alternatives the user compares on Compose. Use for /congo and for requests like build me a CRM for realtors, start a new app, help redesign my contacts page, make this page look better, show me other takes on the pricing page, or redesign the app. The user's own AI builds every alternative. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
+description: "Build with real apps from the Congo Library: start from a real, working app or screen and adapt its source instead of building from scratch, with or without the local Congo workspace. Use for /congo and for requests like build me a CRM for realtors from Congo, start a new app, add a settings page like this one, redesign my dashboard, show me a few directions, or open the Congo workspace. In the workspace people select apps and screens and send them; you return running prototypes, and Use this puts one into their app. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
 version: 4.8.0
 license: Apache-2.0
 ---
 
-The Congo skill runs in the local Congo workspace: the user sees and compares your alternatives as running code on Compose, and every action they take there comes back to you. You are the only AI. This chat stays the conversation.
+Congo gives you real apps to build from: full editable app templates and their screens, with working source, from the Congo Library ([buildwithcongo.com](https://buildwithcongo.com)). Starting from the closest real app and adapting it is faster than writing from scratch, and the result looks like a real product. You are the only AI. This chat stays the conversation.
 
 `.veto/skills/congo/scripts` below is this skill's `scripts` folder: resolve it from the directory that contains this SKILL.md (the base directory the runtime reports for the skill), and use the written path only when none is reported. Keep the working directory at the user's project, or at the folder they work in when there is no project yet.
 
-## Start
+## How to work
 
-1. Decide which kind of request this is, from this conversation and the folder:
-   - **A new app**: there is no app yet (an empty or unrelated folder), or the user asks for a new product ("build me a CRM for realtors", "start a new app"). Resolve what the product does and who uses it; you need no app folder yet.
-   - **An existing app**: a new screen, a page redesign or a whole-app redesign. Resolve the app (its folder), the page or route, and the intent.
+- **Do what the user asked.** There is no fixed routine: no rounds of options, interviews or decision pages before you build.
+- **One result by default.** Make several side by side only when the user asks for them ("show me a few directions", a redesign where they want to choose).
+- **Whole app or screens is your call,** from what the user selected and said. A new product usually starts from the closest whole app; a new page in an existing app starts from the closest screen. When nothing is selected, search the Library and choose from what it holds today.
+- **Adapt before building.** Change the real source's names, content, sample data, labels, routes and wiring for the user's product. Write new pieces only where the Library has nothing close, and build them from the app's own components and styles.
+- **Ask only when it matters.** If the product or the target app is genuinely unclear, ask one short question here. Otherwise make reasonable choices and say what you chose.
+- **Keep it quick.** Adapt the screens the product's main workflow uses first, show the result, and say which parts are still the source app's; rework or remove the rest when the user asks. Install and build once, open the main routes to check them, and run deeper reviews (critique, polish, audit) only when asked.
 
-   If what you need is missing, ask here in one short question before going on. A narrow request (one section, one page) stays narrow; "redesign the app" means one coherent direction across the affected screens and shared components.
-2. Connect and open the workspace on Compose. Pass `--project` only for an existing app:
+The Congo CLI commands, sign-in and subscription rules, and how to adapt installed source are in Impeccable's `reference/congo.md`. Library source comes only through Congo's CLI or MCP under the user's own sign-in; never ask for or handle their credentials.
+
+## Without the workspace
+
+A clear request in this chat ("build me a CRM for realtors from Congo", "add a billing page like Congo's to my app") needs no workspace:
+
+1. Find the closest app or screens: `congo templates --json`, `congo search --kind screen --query "<words>" --json`.
+2. **A new app:** `congo create <template-id> --project <new folder>` (the folder the user named, or a new folder named after the product in the current folder). **An existing app:** add the screens to it with `congo add` as `congo.md` describes.
+3. Adapt it, install its dependencies, build once and open the main routes.
+4. Offer to show it running in the workspace's My app: `node .veto/skills/congo/scripts/workspace.mjs connect --project <folder> --view live --browser`.
+
+## With the workspace
+
+When the user wants to browse and pick, asks for the workspace, or sends from it:
+
+1. Connect and open the workspace (it opens on the Library). Pass `--project` when the user has an app:
 
    ```sh
    node .veto/skills/congo/scripts/workspace.mjs connect [--project <app folder>] --browser
    ```
 
    Show the user the `url` it prints. It starts Impeccable's live helper on the workspace's working area and prints that `area` and the poll launcher (with `--json`: `poll.launcher`, and `poll.windowsLauncher` for a Windows shell without `sh`).
-3. Start Impeccable's poll from `area`, following the harness policy in Impeccable's `reference/live.md` (Claude Code: a background task; Codex: a foreground session; Cursor: a background terminal):
+2. Start Impeccable's poll from `area`, following the harness policy in Impeccable's `reference/live.md` (Claude Code: a background task; Codex: a foreground session; Cursor: a background terminal). In a non-interactive run, keep the poll in the foreground so the session stays alive:
 
    ```sh
    cd <area> && <poll launcher> live-poll
    ```
 
-4. Put the request into Compose, in the user's words:
+3. Everything the user does in the workspace arrives at your poll as `Congo workspace request <id> (<type>)`. Handle each with [reference/workspace.md](reference/workspace.md), then poll again.
 
-   ```sh
-   node .veto/skills/congo/scripts/workspace.mjs request --text "<the request>" [--project <app folder>]
-   ```
+What you make for the workspace lands in **Prototypes** as running code, in the workspace's working area. Only **Use this** (a `build` request) and edits the user accepts in My app change their project.
 
-   It arrives at your poll as `Congo workspace request <id> (compose)`. Handle it, and every later workspace request, with [reference/workspace.md](reference/workspace.md). Keep polling after each reply.
-
-The user can also open the workspace themselves (`congo workspace`) and type into Compose; those requests reach you the same way once you are polling.
-
-## A new app
-
-For a new app, Compose starts from real apps, not invented directions. Follow the reference round in Impeccable's `reference/congo.md` ("New products and whole surfaces: real apps first"): pick the Congo apps closest to what the product does, adapt each one's main screen to the product, and show them on Compose as running code. When the user picks one with **Build this**, create the new app from that Congo app and carry the approved adaptation through it, as `workspace.md` describes under `build`. Then attach the new folder to the workspace and offer to start it in Live App.
-
-## While the workspace is open
-
-- Tweaks, Build this, Library picks, Edit and Live App all arrive as requests or as Impeccable live events. `workspace.md` says how to answer each; Impeccable's `live.md` covers its own live-editor events.
-- Only Build this changes or creates the user's project. Alternatives, tweaks and Library adaptations are written in the workspace's working area.
-- Library source comes only through Congo's CLI or MCP, under the user's own sign-in. Never ask for or handle their credentials.
-- Keep product behavior, routes, data bindings, forms and actions working, and the user's unrelated edits intact. Report what changed after Build this in one line in the workspace and in more detail here.
+A request made here in chat that should become a prototype ("show me a few directions for my dashboard" while the workspace is open) goes in with `node .veto/skills/congo/scripts/workspace.mjs request --text "<the user's words>" [--project <app folder>]` and comes back to your poll like any other.
 
 `node .veto/skills/congo/scripts/workspace.mjs status` reports the workspace; `stop` closes it.

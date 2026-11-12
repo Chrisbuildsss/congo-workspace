@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Congo workspace launcher. Opens (or reuses) the local workspace server.
-//   node workspace.mjs open [--project PATH] [--view compose|library|projects|live] [--no-browser] [--json]
-//   node workspace.mjs connect [--project PATH] [--browser] [--json]   (for the user's AI)
-//   node workspace.mjs request --text "..." [--project PATH] [--browser] [--json]  (Congo skill)
+//   node workspace.mjs open [--project PATH] [--view library|prototypes|live] [--no-browser] [--json]
+//   node workspace.mjs connect [--project PATH] [--view library|prototypes|live] [--browser] [--json]   (for the user's AI)
+//   node workspace.mjs request --text "..." [--project PATH] [--browser] [--json]  (a request from the AI's chat; its prototype lands in Prototypes)
 //   node workspace.mjs status [--json]
 //   node workspace.mjs stop
 //   node workspace.mjs serve [--port N]      (foreground; `open` starts this detached)
@@ -94,6 +94,14 @@ function openBrowser(url) {
   child.unref();
 }
 
+// Prototypes is the old Compose view: `compose` still names it in the API.
+function viewPath(view) {
+  return view === 'compose' || view === 'prototypes' ? 'prototypes' : view;
+}
+function viewName(view) {
+  return view === 'prototypes' ? 'compose' : view;
+}
+
 function print(args, value, human) {
   console.log(args.json ? JSON.stringify(value, null, 2) : human);
 }
@@ -134,15 +142,17 @@ async function main() {
     register(files);
     const record = await ensure(files, Number(args.port) || 0);
     const connected = await request(record, '/api/connect', typeof args.project === 'string' ? { project: args.project } : {});
-    const url = `http://127.0.0.1:${record.port}/compose#t=${record.token}`;
+    // The Library to browse and send from; with --project, My app shows that app.
+    const view = typeof args.view === 'string' ? viewPath(args.view) : 'library';
+    const url = `http://127.0.0.1:${record.port}/${view}#t=${record.token}`;
     if (args.browser === true || args['open-browser']) openBrowser(url);
     return print(args, { url, ...connected, next: `From ${connected.area}, run ${connected.poll?.launcher ?? "Impeccable's launcher"} live-poll and keep polling.` },
       `Congo workspace: ${url}\nWorking area: ${connected.area}\nNext: from the working area, run ${connected.poll?.launcher ?? "Impeccable's launcher"} live-poll and keep polling.`);
   }
 
   if (command === 'request') {
-    // For the user's AI (Congo skill): put the user's request into
-    // Compose as a new conversation; it comes back to the AI as a steer.
+    // A request from the AI's own chat: it lands in Prototypes like one typed
+    // in the request box, and comes back to the AI as a steer.
     const text = typeof args.text === 'string' ? args.text.trim() : '';
     if (!text) throw new Error('Pass the request with --text "..."');
     register(files);
@@ -151,10 +161,10 @@ async function main() {
     if (typeof args.project === 'string') appId = (await request(record, '/api/apps', { path: args.project })).app.id;
     const { compose } = await request(record, '/api/composes', { title: text.split(/[.!?\n]/)[0].slice(0, 60), appId });
     const sent = await request(record, '/api/requests', { type: 'compose', composeId: compose.id, text, appId: appId ?? compose.appId });
-    const url = `http://127.0.0.1:${record.port}/compose/${compose.id}#t=${record.token}`;
+    const url = `http://127.0.0.1:${record.port}/prototypes#t=${record.token}`;
     if (args.browser === true) openBrowser(url);
     return print(args, { url, composeId: compose.id, requestId: sent.request.id },
-      `Sent to Compose: ${url}\nRequest ${sent.request.id} will reach your live-poll as a steer.`);
+      `Sent to Prototypes: ${url}\nRequest ${sent.request.id} will reach your live-poll as a steer.`);
   }
 
   if (command !== 'open') {
@@ -169,8 +179,8 @@ async function main() {
   register(files);
   const record = await ensure(files, Number(args.port) || 0);
   if (typeof args.project === 'string') await request(record, '/api/apps', { path: args.project });
-  if (typeof args.view === 'string') await request(record, '/api/view', { view: args.view });
-  const url = `http://127.0.0.1:${record.port}/${typeof args.view === 'string' ? args.view : ''}#t=${record.token}`;
+  if (typeof args.view === 'string') await request(record, '/api/view', { view: viewName(args.view) });
+  const url = `http://127.0.0.1:${record.port}/${typeof args.view === 'string' ? viewPath(args.view) : ''}#t=${record.token}`;
   const status = await request(record, '/api/status');
   if (!args['no-browser']) openBrowser(url);
   print(args, { url, pid: record.pid, port: record.port, contentPort: record.contentPort, dataDir: files.root, status },

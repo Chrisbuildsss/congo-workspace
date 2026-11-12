@@ -1,5 +1,5 @@
 ---
-description: "Design and build with real apps in the local Congo workspace: start a new app from the closest Congo apps, design a new screen, or redesign a page or a whole app, with working alternatives the user compares on Compose. Use for /congo and for requests like build me a CRM for realtors, start a new app, help redesign my contacts page, make this page look better, show me other takes on the pricing page, or redesign the app. The user's own AI builds every alternative. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
+description: "Build with real apps from the Congo Library: start from a real, working app or screen and adapt its source instead of building from scratch, with or without the local Congo workspace. Use for /congo and for requests like build me a CRM for realtors from Congo, start a new app, add a settings page like this one, redesign my dashboard, show me a few directions, or open the Congo workspace. In the workspace people select apps and screens and send them; you return running prototypes, and Use this puts one into their app. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
 agent: build
 subtask: true
 ---

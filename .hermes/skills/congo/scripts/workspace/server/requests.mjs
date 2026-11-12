@@ -1,7 +1,8 @@
 // Workspace actions as requests for the user's own AI. Each request is a JSON
 // file in the working area plus one Impeccable `steer` event that points at
-// it. The AI writes designs into the folders the request names and replies
-// `steer_done`; the workspace turns both into cards and conversation.
+// it. The AI writes prototypes into the folders the request names and replies
+// `steer_done`; the workspace turns both into Prototypes cards and messages.
+// Only `build` (Use this) changes the person's project.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,7 +21,17 @@ export const EDITABLE = { label: 'Make editable', command: null, brief: 'the sam
 
 export const MORE = ['distill', 'typeset', 'animate', 'delight', 'overdrive', 'polish', 'clarify', 'adapt', 'harden', 'critique', 'audit'];
 
-const ALTERNATIVES = 3;
+// One prototype per request. The AI may add more beside it (<id>-2, <id>-3)
+// when the person asked for several, such as a redesign or "a few directions".
+const PROTOTYPES = 1;
+
+// Requests whose results are new prototypes.
+export const PROTOTYPE_TYPES = ['send', 'compose', 'tweak', 'library'];
+
+// A request tray holds at most this many Library items.
+export const MAX_ITEMS = 24;
+export const ITEM_KINDS = ['template', 'app', 'screen'];
+const ITEM_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
 
 export function newId() {
   return crypto.randomBytes(4).toString('hex');
@@ -29,6 +40,56 @@ export function newId() {
 function clip(text, max) {
   const value = String(text ?? '').replace(/\s+/g, ' ').trim();
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+function trimmed(value, max) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, max) : null;
+}
+
+function httpsUrl(value) {
+  return typeof value === 'string' && /^https:\/\//.test(value) ? value.slice(0, 1000) : null;
+}
+
+/**
+ * A Library item the person selected: its catalog identity and version, what
+ * the card showed, and their note for it. Never source. Null when invalid.
+ */
+export function normalizeItem(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!ITEM_KINDS.includes(raw.kind) || typeof raw.id !== 'string' || !ITEM_ID.test(raw.id)) return null;
+  let app = null;
+  if (raw.app && typeof raw.app === 'object') {
+    app = { id: trimmed(raw.app.id, 100), slug: trimmed(raw.app.slug, 100), name: trimmed(raw.app.name, 120) };
+  } else if (typeof raw.app === 'string') {
+    app = { id: null, slug: trimmed(raw.app, 100), name: null };
+  }
+  return {
+    kind: raw.kind,
+    id: raw.id,
+    version: trimmed(raw.version, 200),
+    app,
+    title: trimmed(raw.title, 200) ?? raw.id,
+    route: trimmed(raw.route, 300),
+    image: httpsUrl(raw.image),
+    preview: httpsUrl(raw.preview),
+    url: httpsUrl(raw.url),
+    note: trimmed(raw.note, 1000) ?? '',
+  };
+}
+
+/** The whole tray, validated: items in order, no duplicates, one note. */
+export function normalizeTray(raw) {
+  const list = Array.isArray(raw?.items) ? raw.items : [];
+  if (list.length > MAX_ITEMS) throw Object.assign(new Error(`Select at most ${MAX_ITEMS} items at a time`), { status: 400 });
+  const items = [];
+  for (const entry of list) {
+    const item = normalizeItem(entry);
+    if (!item) throw Object.assign(new Error('Unknown library item'), { status: 400 });
+    if (!items.some((existing) => existing.kind === item.kind && existing.id === item.id)) items.push(item);
+  }
+  return { items, note: trimmed(raw?.note, 4000) ?? '' };
 }
 
 /** What a tweak or More action asks for. */
@@ -46,13 +107,14 @@ export function describeAction(key) {
   return null;
 }
 
-export function buildRequest({ type, id = newId(), files, reference, impeccableReference, app, compose, text, design, action, item, attachment }) {
-  const count = type === 'compose' ? ALTERNATIVES : ['tweak', 'library'].includes(type) ? 1 : 0;
+export function buildRequest({ type, id = newId(), files, reference, impeccableReference, app, compose, text, design, action, item, items, attachment }) {
+  const count = PROTOTYPE_TYPES.includes(type) ? PROTOTYPES : 0;
   const outputs = Array.from({ length: count }, (_, i) => {
     const designId = `${id}-${i + 1}`;
     return { id: designId, dir: path.join(files.designs, designId) };
   });
   const commandRef = action?.command && impeccableReference ? path.join(impeccableReference, `${action.command}.md`) : null;
+
   const request = {
     id,
     type,
@@ -65,6 +127,7 @@ export function buildRequest({ type, id = newId(), files, reference, impeccableR
       impeccableReference: impeccableReference ?? null,
     },
     app: app ? { name: app.name, path: app.path } : null,
+    ...(type === 'send' ? { destination: app ? 'existing' : 'new', items: items ?? [] } : {}),
     compose: compose ? { id: compose.id, title: compose.title } : null,
     request: text ?? null,
     attachment: attachment ?? null,
@@ -76,6 +139,8 @@ export function buildRequest({ type, id = newId(), files, reference, impeccableR
           entry: design.entry ?? null,
           url: design.url ?? null,
           source: design.source ?? null,
+          wholeApp: Boolean(design.root),
+          sourceDir: design.sourceDir ?? null,
         }
       : null,
     action: action ? { key: action.key, label: action.label, command: action.command, brief: action.brief, reference: commandRef } : null,
@@ -83,7 +148,15 @@ export function buildRequest({ type, id = newId(), files, reference, impeccableR
     outputs,
     designJson: {
       required: ['title'],
-      optional: ['summary', 'format (desktop|mobile)', 'url (loopback dev server instead of index.html)', 'source', 'notices'],
+      optional: [
+        'summary',
+        'format (desktop|mobile)',
+        'root (true for a whole app: served at the root of its own local address)',
+        'sourceDir (the prototype\'s runnable source folder, for Edit and Use this)',
+        'url (loopback dev server instead of index.html)',
+        'source',
+        'notices',
+      ],
     },
   };
   return request;
@@ -95,23 +168,42 @@ export function steerMessage(request, requestFile) {
   const reply = `Then reply: impeccable live-poll --reply ${request.id} steer_done "<one short line for the user>".`;
   let lead;
   switch (request.type) {
+    case 'send': {
+      const items = request.items ?? [];
+      const names = items
+        .slice(0, 8)
+        .map((i) => `${i.kind === 'screen' ? 'screen' : 'app'} "${clip(i.title, 60)}"${i.app?.name && i.kind === 'screen' ? ` (${clip(i.app.name, 40)})` : ''}`)
+        .join(', ');
+      const what = items.length
+        ? `${items.length} Congo Library item${items.length === 1 ? '' : 's'}: ${names}${items.length > 8 ? ', and more' : ''}`
+        : "Congo's Library (nothing selected: find the closest app or screens)";
+      const forApp = request.app ? ` for the user's app at ${request.app.path}` : ' for a new app';
+      const note = request.request ? ` The user's note: "${clip(request.request, 1500)}".` : '';
+      lead = `Make one running prototype${forApp} from ${what}.${note} Each item's note is in the request file. Build it in the working area, outside the user's project.`;
+      break;
+    }
     case 'compose':
-      lead = `Use the live choices workflow for this request: "${clip(request.request, 1500)}"${request.app ? ` (app: ${request.app.name})` : ''}. Write ${request.outputs.length} alternatives as running code into the folders the request names.`;
+      lead = `Make one running prototype for this request: "${clip(request.request, 1500)}"${request.app ? ` (app: ${request.app.name})` : ''}. Several side by side only if the user asked for that (a redesign or "a few directions"). Build in the working area, outside the user's project.`;
       break;
     case 'tweak':
-      lead = `Make a new design from "${clip(request.design?.title, 120)}": ${request.action.brief}. Keep the original; write the result into the folder the request names.`;
+      lead = `Make a new prototype from "${clip(request.design?.title, 120)}": ${request.action.brief}. Keep the original; write the result into the folder the request names.`;
       break;
     case 'library':
-      lead = `${request.action ? `${request.action.label} on` : 'Use'} the Congo ${request.item.kind} "${clip(request.item.title, 120)}"${request.item.app ? ` from ${request.item.app}` : ''}. Retrieve its source with the Congo CLI or MCP into the request's sources folder, adapt it outside the user's project, and write the result into the folder the request names.`;
+      lead = `${request.action ? `${request.action.label} on` : 'Use'} the Congo ${request.item.kind} "${clip(request.item.title, 120)}"${request.item.app ? ` from ${request.item.app}` : ''}. Retrieve its source with the Congo CLI or MCP into the request's sources folder, adapt it outside the user's project, and write one running prototype into the folder the request names.`;
       break;
     case 'build':
-      lead = `Build this: apply the design "${clip(request.design?.title, 120)}" to the user's real project${request.app ? ` at ${request.app.path}` : ''}. Ask in your chat if the project or page is unclear.`;
+      lead = `Use this: ${request.app ? `apply the prototype "${clip(request.design?.title, 120)}" to the user's project at ${request.app.path}` : `create the user's new app from the prototype "${clip(request.design?.title, 120)}" with congo create`}. This is the only request that changes the user's code. Ask in your chat if the project or page is unclear.`;
+      break;
+    case 'rebuild':
+      lead = `The user finished live-editing the prototype "${clip(request.design?.title, 120)}". Rebuild its static output in ${request.design?.dir ?? 'its folder'} from ${request.design?.sourceDir ?? 'its source'} so the card shows the edits, then poll the workspace area (${request.workspace.area}) again.`;
       break;
     case 'start-app':
       lead = `Start the user's app at ${request.app?.path ?? '(ask which app)'} with its own dev command and keep it running. Reply steer_done with its local URL (http://127.0.0.1:PORT/ or http://localhost:PORT/) so the workspace can show it.`;
       break;
     case 'live-edit':
-      lead = `Turn on Impeccable's live editor for the user's running app at ${request.app?.path ?? '(ask which app)'}: run Impeccable's live boot in that project (its live.md, and live-setup.md on first use), keep the app's dev server running, reply steer_done with the app's local URL, then poll that project's helper instead of the workspace area. The workspace follows both.`;
+      lead = request.design?.sourceDir
+        ? `Turn on Impeccable's live editor for the prototype "${clip(request.design.title, 120)}" whose source is ${request.design.sourceDir}: install its dependencies if needed, start its dev server and keep it running, run Impeccable's live boot in that folder (its live.md, and live-setup.md on first use), reply steer_done with the dev server's local URL, then poll that folder's helper instead of the workspace area. The workspace follows both.`
+        : `Turn on Impeccable's live editor for the user's running app at ${request.app?.path ?? '(ask which app)'}: run Impeccable's live boot in that project (its live.md, and live-setup.md on first use), keep the app's dev server running, reply steer_done with the app's local URL, then poll that project's helper instead of the workspace area. The workspace follows both.`;
       break;
     case 'switch-to-area':
       lead = `The user is editing a design in the workspace. Reply steer_done, then run your Impeccable live-poll from the workspace area (${request.workspace.area}) again so its live editor reaches you.`;

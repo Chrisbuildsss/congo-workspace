@@ -16,12 +16,16 @@ export function emptyState() {
     designs: {},
     projects: [],
     requests: {},
+    // The Library request tray: selected items with their notes, and one
+    // note for the whole request. Kept until Send so a reload loses nothing.
+    tray: { items: [], note: '' },
   };
 }
 
 export function readJson(file, fallback = null) {
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    // Tolerate a byte-order mark: Windows tools often write one.
+    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
   } catch {
     return fallback;
   }
@@ -41,6 +45,7 @@ export class Store {
     this.state = { ...emptyState(), ...(loaded && typeof loaded === 'object' ? loaded : {}) };
     if (!VIEWS.includes(this.state.view)) this.state.view = 'library';
     if (!THEMES.includes(this.state.settings?.theme)) this.state.settings = { ...this.state.settings, theme: 'system' };
+    if (!Array.isArray(this.state.tray?.items)) this.state.tray = { items: [], note: '' };
   }
 
   get() {

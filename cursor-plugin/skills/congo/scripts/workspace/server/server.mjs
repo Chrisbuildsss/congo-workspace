@@ -6,14 +6,15 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { layout } from './paths.mjs';
-import { Store, THEMES, VIEWS, writeJsonAtomic } from './store.mjs';
+import { Store, THEMES, VIEWS, readJson, writeJsonAtomic } from './store.mjs';
 import { helperStatus } from './live.mjs';
 import { createCatalog } from './catalog.mjs';
 import { ensureHelper, findLauncher, followEvents, postSteer, prepareArea, referenceDir } from './impeccable.mjs';
 import { helperInfo } from './live.mjs';
-import { buildRequest, describeAction, isBundleOnly, newId, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
+import { buildRequest, describeAction, isBundleOnly, newId, normalizeTray, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
 import { DevServers, normalizeUrl } from './devserver.mjs';
 import { runImpeccable } from './impeccable.mjs';
+import { savedItems } from './congo-cli.mjs';
 
 export const PROTOCOL = 1;
 export const VERSION = '0.1.0';
@@ -176,7 +177,7 @@ function appName(appPath) {
   return path.basename(appPath);
 }
 
-export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl, bootHelper = !env.CONGO_WORKSPACE_NO_HELPER }) {
+export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl, runCongo, bootHelper = !env.CONGO_WORKSPACE_NO_HELPER }) {
   const files = layout(root);
   for (const dir of [files.area, files.designs, files.requests, files.sources]) fs.mkdirSync(dir, { recursive: true });
   const store = new Store(files.state);
@@ -197,6 +198,17 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   };
 
   const activeApp = () => store.get().apps.find((app) => app.id === store.get().activeAppId) || null;
+  // The project the AI may be live-editing besides the working area: a
+  // prototype's source while the person edits that prototype, else My app.
+  const editingDesign = () => {
+    const s = store.get();
+    const design = s.editTarget ? s.designs[s.editTarget] : null;
+    return design?.sourceDir ? design : null;
+  };
+  const liveTarget = () => {
+    const design = editingDesign();
+    return design ? { id: `prototype:${design.id}`, path: design.sourceDir, name: design.title } : activeApp();
+  };
   const launcher = findLauncher(env);
   const protocolFile = path.resolve(uiDir, '..', '..', '..', 'reference', 'workspace.md');
   const impeccableReference = referenceDir(launcher);
@@ -208,7 +220,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   const live = { area: { running: false, agentPolling: false }, app: { running: false, agentPolling: false }, lastPollAt: 0, lastVia: null, helperError: null };
 
   async function refreshLive() {
-    const app = activeApp();
+    const app = liveTarget();
     const [area, appHelper] = await Promise.all([
       helperStatus(files.area),
       app ? helperStatus(app.path) : Promise.resolve({ running: false, agentPolling: false }),
@@ -251,8 +263,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     const requests = Object.values(s.requests)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
       .slice(0, 100)
-      .map(({ id, type, status: st, composeId, appId, designId, action, createdAt, outputs, message }) => ({
-        id, type, status: st, composeId, appId, designId, action, createdAt, outputs, message,
+      .map(({ id, type, status: st, composeId, appId, designId, action, createdAt, outputs, message, summary, doneAt }) => ({
+        id, type, status: st, composeId, appId, designId, action, createdAt, outputs, message, summary: summary ?? null, doneAt: doneAt ?? null,
       }));
     return {
       settings: s.settings,
@@ -263,7 +275,18 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       designs: s.designs,
       projects: s.projects,
       requests,
+      tray: s.tray,
     };
+  }
+
+  // The account's Saved items, through the person's own Congo CLI. Cached
+  // briefly: the Library asks each time the Saved filter opens.
+  let savedCache = null;
+  async function saved(refresh = false) {
+    if (!refresh && savedCache && Date.now() - savedCache.at < 60_000) return savedCache.value;
+    const value = await savedItems({ env, ...(runCongo ? { run: runCongo } : {}) });
+    savedCache = { at: Date.now(), value };
+    return value;
   }
 
   // --- requests to the user's AI ------------------------------------------
@@ -310,18 +333,38 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
 
   async function createRequest(body) {
     const type = body.type;
-    if (!['compose', 'tweak', 'build', 'library', 'start-app', 'live-edit', 'switch-to-area'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
-    const standalone = ['start-app', 'live-edit', 'switch-to-area'].includes(type);
+    if (!['send', 'compose', 'tweak', 'build', 'library', 'start-app', 'live-edit', 'rebuild', 'switch-to-area'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
+    const standalone = ['start-app', 'live-edit', 'rebuild', 'switch-to-area'].includes(type);
     const id = newId();
     const s = store.get();
     let compose = null;
     let design = null;
     let action = null;
     let item = null;
+    let items = null;
     let text = null;
     let userText = '';
 
-    if (type === 'compose') {
+    if (type === 'send') {
+      // Library items and notes for the person's own AI to build from: into
+      // the chosen app (appId) or, with none, as a new app.
+      ({ items } = normalizeTray({ items: body.items }));
+      text = String(body.note ?? body.text ?? '').trim().slice(0, 4000) || null;
+      if (!items.length && !text && !body.attachment) {
+        throw Object.assign(new Error('Select something in the Library or describe what you want'), { status: 400 });
+      }
+      if (body.appId != null && !s.apps.some((a) => a.id === body.appId)) {
+        throw Object.assign(new Error('That app is no longer attached'), { status: 404 });
+      }
+      const titles = items.slice(0, 3).map((i) => i.title).join(', ');
+      userText = items.length ? `${titles}${items.length > 3 ? ` and ${items.length - 3} more` : ''}${text ? `: ${text}` : ''}` : text ?? 'Use the attached image';
+    } else if ((type === 'live-edit' || type === 'rebuild') && body.designId) {
+      // Live editing a prototype's source, and rebuilding it afterwards.
+      design = s.designs[body.designId];
+      if (!design?.local || !design.sourceDir) throw Object.assign(new Error('This prototype has no source to edit'), { status: 404 });
+    } else if (type === 'rebuild') {
+      throw Object.assign(new Error('Name the prototype to rebuild'), { status: 400 });
+    } else if (type === 'compose') {
       compose = s.composes.find((c) => c.id === body.composeId);
       if (!compose) throw Object.assign(new Error('Compose not found'), { status: 404 });
       text = String(body.text ?? '').trim().slice(0, 4000);
@@ -335,7 +378,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         if (!action) throw Object.assign(new Error('Unknown action'), { status: 400 });
         userText = `${action.label}: ${design.title}`;
       } else {
-        userText = `Build this: ${design.title}`;
+        userText = `Use this: ${design.title}`;
       }
       compose = s.composes.find((c) => c.id === body.composeId) ?? composeOf(s, design.id);
     } else if (type === 'library') {
@@ -365,24 +408,32 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     // Steers go to the helper the AI is polling: the workspace area's, or
     // the app's while it live-edits the running app.
     await refreshLive();
-    const appForHelper = activeApp();
-    const info = live.app.agentPolling && !live.area.agentPolling && appForHelper
+    const appForHelper = liveTarget();
+    // While a prototype is being edited the AI polls its source's helper, so
+    // requests (the rebuild among them) go there as long as that helper runs.
+    const info = (editingDesign() && live.app.running) || (live.app.agentPolling && !live.area.agentPolling && appForHelper)
       ? helperInfo(appForHelper.path)
       : await helperForRequests();
     const attachment = saveAttachment(id, body.attachment);
 
     const result = store.update((state) => {
       if (standalone) {
-        const app = state.apps.find((a) => a.id === body.appId) ?? null;
-        const request = buildRequest({ type, id, files, reference: protocolFile, impeccableReference, app });
+        const app = design ? null : state.apps.find((a) => a.id === body.appId) ?? null;
+        const request = buildRequest({
+          type, id, files, reference: protocolFile, impeccableReference, app,
+          design: design ? { ...design, dir: path.join(files.designs, design.id), entry: path.join(files.designs, design.id, 'index.html') } : null,
+        });
         state.requests[id] = {
-          id, type, status: 'sent', composeId: null, designId: null, action: null, item: null,
-          appId: app?.id ?? null, outputs: [], createdAt: request.createdAt, message: null,
+          id, type, status: 'sent', composeId: null, designId: design?.id ?? null, action: null, item: null,
+          appId: app?.id ?? null, outputs: [], createdAt: request.createdAt, message: null, summary: null,
         };
+        if (type === 'live-edit' && design) state.editTarget = design.id;
         return { request, compose: null };
       }
       let target = compose ? state.composes.find((c) => c.id === compose.id) : null;
       if (!target) target = newCompose(state, type === 'library' ? item.title : userText, body.appId);
+      // Send takes what the tray held; the tray starts empty again.
+      if (type === 'send' && body.fromTray) state.tray = { items: [], note: '' };
       if (type === 'compose' && (target.title === 'New design' || !target.title)) target.title = text.split(/[.!?\n]/)[0].slice(0, 60) || 'New design';
       if (body.appId === null || state.apps.some((a) => a.id === body.appId)) target.appId = body.appId;
       target.messages.push({ id: `m-${id}`, role: 'user', text: userText, at: new Date().toISOString(), requestId: id });
@@ -402,6 +453,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         design: design ? { ...design, dir: design.local ? path.join(files.designs, design.id) : null, entry: design.local ? path.join(files.designs, design.id, 'index.html') : null } : null,
         action,
         item,
+        items,
       });
       state.requests[id] = {
         id,
@@ -414,6 +466,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         outputs: request.outputs.map((o) => o.id),
         createdAt: request.createdAt,
         message: null,
+        summary: userText.slice(0, 300),
       };
       return { request, compose: target };
     });
@@ -464,6 +517,21 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     live.lastPollAt = Date.now();
     // "Ask my AI to start it" / live editing: the reply carries the app's URL.
     const done = store.get().requests[event.id];
+    if (done.type === 'rebuild' && done.designId) {
+      // Rebuilt: the AI is back on the working area; stop following the source.
+      store.update((state) => { if (state.editTarget === done.designId) state.editTarget = null; });
+      return;
+    }
+    if (done.type === 'live-edit' && done.designId) {
+      // A prototype's live edit: show its dev server while the person edits.
+      const match = done.status === 'done' && done.message ? /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):\d{2,5}[^\s"')]*/i.exec(done.message) : null;
+      store.update((state) => {
+        const design = state.designs[done.designId];
+        if (design && match) design.editUrl = normalizeUrl(match[0]);
+        if (!match && state.editTarget === done.designId) state.editTarget = null;
+      });
+      return;
+    }
     if (done.status === 'done' && ['start-app', 'live-edit'].includes(done.type) && done.message) {
       const match = /https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):\d{2,5}[^\s"')]*/i.exec(done.message);
       const app = store.get().apps.find((a) => a.id === done.appId);
@@ -471,12 +539,90 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     }
   }
 
-  function registerDesigns() {
+  // Whole-app prototypes (design.json "root": true) are served at the root of
+  // their own local address, so the app's routes and root-relative assets work
+  // as they do in the real app. One small listener per prototype.
+  const rootServers = new Map();
+
+  function rootHandler(designId) {
+    return (req, res) => {
+      try {
+        const entry = rootServers.get(designId);
+        if (!entry || !hostAllowed(req, entry.port)) return send(res, 403, 'Forbidden', { 'Content-Type': 'text/plain' });
+        if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed', { 'Content-Type': 'text/plain' });
+        const base = path.join(files.designs, designId);
+        const url = new URL(req.url, `http://127.0.0.1:${entry.port}`);
+        let file = fileInside(base, url.pathname);
+        if (file && fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
+        // An app route (no file extension) gets the app's page, as its own server would.
+        if ((!file || !fs.existsSync(file)) && !path.extname(url.pathname)) file = path.join(base, 'index.html');
+        if (file && path.extname(file).toLowerCase() === '.html' && fs.existsSync(file)) {
+          let html = fs.readFileSync(file, 'utf8');
+          if (url.searchParams.get('edit') !== '1') html = html.replace(/<!-- impeccable-live-start -->[\s\S]*?<!-- impeccable-live-end -->\s*/g, '');
+          return send(res, 200, html, { 'Content-Type': MIME['.html'], ...DESIGN_HEADERS });
+        }
+        if (file && serveFile(res, file, DESIGN_HEADERS)) return undefined;
+        return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+      } catch (error) {
+        log(`prototype ${designId}: ${error.stack || error}`);
+        return send(res, 500, 'Workspace error', { 'Content-Type': 'text/plain' });
+      }
+    };
+  }
+
+  async function ensureRootServer(designId) {
+    const known = rootServers.get(designId);
+    if (known) return known.ready;
+    const server = http.createServer(rootHandler(designId));
+    const used = new Set([uiPort, servedContentPort, ...[...rootServers.values()].map((e) => e.port)]);
+    const entry = { server, port: 0, ready: null };
+    rootServers.set(designId, entry);
+    entry.ready = listen(server, range(servedContentPort + 1, 400).filter((p) => !used.has(p)))
+      .then((p) => { entry.port = p; return p; })
+      .catch((error) => { rootServers.delete(designId); throw error; });
+    return entry.ready;
+  }
+
+  function closeRootServer(designId) {
+    const entry = rootServers.get(designId);
+    if (!entry) return;
+    rootServers.delete(designId);
+    entry.server.close();
+    entry.server.closeAllConnections?.();
+  }
+
+  function sourceDirOf(meta) {
+    if (typeof meta.sourceDir !== 'string' || !path.isAbsolute(meta.sourceDir)) return undefined;
+    try {
+      return fs.statSync(meta.sourceDir).isDirectory() ? path.resolve(meta.sourceDir) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  let scanning = false;
+  async function registerDesigns() {
+    if (scanning) return;
+    scanning = true;
+    try {
+      await scanOnce();
+    } finally {
+      scanning = false;
+    }
+  }
+
+  async function scanOnce() {
     const found = scanDesigns(files);
+    for (const d of found) {
+      if (d.meta.root === true && fs.existsSync(path.join(d.dir, 'index.html'))) {
+        d.src = `http://127.0.0.1:${await ensureRootServer(d.id)}/`;
+      }
+    }
     const s = store.get();
     const fresh = found.filter((d) => {
       const known = s.designs[d.id];
-      return !known || known.title !== d.meta.title || known.summary !== (d.meta.summary ?? undefined) || known.src !== d.src;
+      return !known || known.title !== d.meta.title || known.summary !== (d.meta.summary ?? undefined) || known.src !== d.src
+        || known.sourceDir !== sourceDirOf(d.meta) || Boolean(known.root) !== (d.meta.root === true);
     });
     if (!fresh.length) return;
     store.update((state) => {
@@ -493,6 +639,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
           summary: typeof d.meta.summary === 'string' ? d.meta.summary.slice(0, 400) : undefined,
           format: d.meta.format === 'mobile' ? 'mobile' : 'desktop',
           src: d.src,
+          root: d.meta.root === true || undefined,
+          sourceDir: sourceDirOf(d.meta),
           requestId: request ? requestId : null,
           parentId: parent?.id ?? existing?.parentId,
           action: request?.action ?? existing?.action,
@@ -540,6 +688,9 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     if (req.method === 'GET' && url.pathname === '/api/library/screens') {
       return send(res, 200, await catalog.screens(Object.fromEntries(url.searchParams)));
     }
+    if (req.method === 'GET' && url.pathname === '/api/library/saved') {
+      return send(res, 200, await saved(url.searchParams.get('refresh') === '1'));
+    }
     if (req.method !== 'POST') return send(res, 404, { error: 'Not found' });
     const body = await readBody(req, url.pathname === '/api/requests' ? 12 * 1024 * 1024 : 256 * 1024);
     switch (url.pathname) {
@@ -556,6 +707,11 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       case '/api/requests': {
         const created = await createRequest(body);
         return send(res, 200, { ...created, state: publicState() });
+      }
+      case '/api/tray': {
+        const tray = normalizeTray(body);
+        store.update((s) => { s.tray = tray; });
+        return send(res, 200, { tray });
       }
       case '/api/projects': {
         const name = String(body.name ?? '').trim().slice(0, 80);
@@ -644,14 +800,36 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         });
         return send(res, 200, publicState());
       }
+      case '/api/designs/rename': {
+        // Rename a prototype: its card and its design.json, so a rescan keeps it.
+        const design = store.get().designs[body.id];
+        const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        if (!design?.local) return send(res, 404, { error: 'Prototype not found' });
+        if (!title) return send(res, 400, { error: 'Name the prototype' });
+        const metaFile = path.join(files.designs, design.id, 'design.json');
+        const meta = readJson(metaFile, null);
+        if (meta) writeJsonAtomic(metaFile, { ...meta, title });
+        store.update((s) => { if (s.designs[design.id]) s.designs[design.id].title = title; });
+        return send(res, 200, publicState());
+      }
       case '/api/designs/delete': {
         const design = store.get().designs[body.id];
         if (!design) return send(res, 404, { error: 'Design not found' });
         if (design.local && /^[a-z0-9][a-z0-9-]{0,63}$/i.test(design.id)) {
+          closeRootServer(design.id);
           const dir = path.join(files.designs, design.id);
           if (path.dirname(dir) === files.designs) fs.rmSync(dir, { recursive: true, force: true });
+          // A prototype's own source copy in the working area goes with it.
+          if (design.sourceDir) {
+            const relative = path.relative(files.sources, design.sourceDir);
+            const shared = Object.values(store.get().designs).some((d) => d.id !== design.id && d.sourceDir === design.sourceDir);
+            if (!shared && relative && !relative.startsWith('..') && !path.isAbsolute(relative)) {
+              fs.rmSync(design.sourceDir, { recursive: true, force: true });
+            }
+          }
         }
         store.update((s) => {
+          if (s.editTarget === design.id) s.editTarget = null;
           delete s.designs[design.id];
           for (const c of s.composes) c.designIds = c.designIds.filter((id) => id !== design.id);
           for (const p of s.projects) p.designIds = p.designIds.filter((id) => id !== design.id);
@@ -682,11 +860,36 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         dev.attachUrl(app, normalizeUrl(body.url), 'user');
         return send(res, 200, { app, ...dev.status(app) });
       }
+      case '/api/edit/stop': {
+        // The person finished editing. A prototype edited through its source
+        // is rebuilt so its card and full-size view show the accepted changes.
+        const design = store.get().designs[body.designId];
+        const wasEditing = store.get().editTarget === body.designId;
+        let rebuild = null;
+        if (design?.sourceDir && wasEditing && body.rebuild !== false) {
+          // Sent while the edit target is still set, so it reaches the helper
+          // the AI is polling; the target clears when the rebuild is answered.
+          rebuild = (await createRequest({ type: 'rebuild', designId: design.id })).request.id;
+        }
+        store.update((s) => {
+          if (s.editTarget === body.designId && !rebuild) s.editTarget = null;
+          if (s.designs[body.designId]) delete s.designs[body.designId].editUrl;
+        });
+        return send(res, 200, { rebuild, state: publicState() });
+      }
       case '/api/edit': {
         // Edit a design with Impeccable's live editor: Impeccable injects its
         // own script into the working area's pages; the frame loads ?edit=1.
         const design = store.get().designs[body.designId];
         if (!design?.local) return send(res, 404, { error: 'Only designs in this workspace can be edited' });
+        if (design.sourceDir) {
+          // A whole-app prototype: its built page is a script bundle, so the AI
+          // runs the prototype's source on its dev server with Impeccable's
+          // editor, the way My app is edited.
+          if (design.editUrl && store.get().editTarget === design.id) return send(res, 200, { mode: 'app', url: design.editUrl, requestId: null });
+          const created = await createRequest({ type: 'live-edit', designId: design.id });
+          return send(res, 200, { mode: 'app', url: null, requestId: created.request.id, state: publicState() });
+        }
         let page = '';
         try {
           page = fs.readFileSync(path.join(files.designs, design.id, 'index.html'), 'utf8');
@@ -849,11 +1052,11 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   // Background: designs the AI writes become cards; helper replies become
   // conversation; the helper boots so the AI can connect right away.
   const timers = [
-    setInterval(() => { try { registerDesigns(); } catch (error) { log(`scan: ${error.message}`); } }, 1500),
+    setInterval(() => { registerDesigns().catch((error) => log(`scan: ${error.message}`)); }, 1500),
     setInterval(() => { refreshLive().catch(() => {}); }, 3000),
   ];
   const unfollow = followEvents(() => helperInfo(files.area), onHelperEvent, log);
-  const unfollowApp = followEvents(() => (activeApp() ? helperInfo(activeApp().path) : null), onHelperEvent, log);
+  const unfollowApp = followEvents(() => (liveTarget() ? helperInfo(liveTarget().path) : null), onHelperEvent, log);
   if (bootHelper && launcher) {
     helperForRequests().catch((error) => log(`helper: ${error.message}`));
   }
@@ -871,6 +1074,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     unfollow();
     unfollowApp();
     dev.stopAll();
+    for (const id of [...rootServers.keys()]) closeRootServer(id);
     let pending = 2;
     const done = () => { if (--pending === 0) resolveStopped(); };
     ui.close(done);

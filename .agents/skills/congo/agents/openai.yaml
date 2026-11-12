@@ -1,4 +1,4 @@
 interface:
   display_name: Congo
-  short_description: "Design and build with real apps in the local Congo workspace: start a new app from the..."
+  short_description: "Build with real apps from the Congo Library: start from a real, working app or screen..."
   default_prompt: Use Congo to redesign, critique, audit, or polish this frontend.

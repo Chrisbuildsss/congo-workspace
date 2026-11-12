@@ -35,20 +35,21 @@
   // Design tokens
   //
 
-  // Brand kinpaku (gold) is pinned to the site's neo-kinpaku tokens
-  // (see site/styles/kinpaku-tokens.css) so Accept / knobs / cycle-dots /
-  // the selection outline / the comment tag all match the site's accent,
-  // not a washed theme-adjusted one. These mirror the kit's picker
-  // colors in site/styles/kinpaku-kit.css; keep them in sync by hand.
+  // Congo Workspace colorway (this fork): a plain black bar with white text,
+  // and one light blue accent for Accept / Go / knobs / cycle-dots / the
+  // selection outline. Upstream Impeccable pins these to its kinpaku gold
+  // (site/styles/kinpaku-tokens.css); only the values differ here, so an
+  // upstream merge touches this block alone. The blue is the workspace's own
+  // accent (workspace/ui/src/styles.css --blue).
   const C = {
-    brand:     'oklch(84% 0.19 80.46)',         // kinpaku gold
-    brandHov:  'oklch(86% 0.07 84)',            // kinpaku-pale (hover lift)
-    brandSoft: 'oklch(84% 0.19 80.46 / 0.18)',  // kinpaku-dim
-    ink:       'oklch(4% 0.004 95)',            // lacquer-deep
-    ash:       'oklch(55% 0.018 82)',           // warm muted text
-    paper:     'oklch(98% 0.005 95 / 0.92)',    // light overlay on user pages
-    paperSolid:'oklch(98% 0.005 95)',
-    mist:      'oklch(90% 0.008 82 / 0.6)',     // light hairline
+    brand:     '#6badff',                        // Congo light blue
+    brandHov:  '#8fc2ff',                        // hover lift
+    brandSoft: 'rgb(107 173 255 / 0.18)',        // dim wash
+    ink:       'oklch(4% 0 0)',                  // black
+    ash:       'oklch(55% 0 0)',                 // muted text
+    paper:     'oklch(98% 0 0 / 0.92)',          // light overlay on user pages
+    paperSolid:'oklch(98% 0 0)',
+    mist:      'oklch(90% 0 0 / 0.6)',           // light hairline
     white:     'oklch(99% 0 0)',
   };
   // Picker bar chrome - mirrors .live-demo-gbar / .live-demo-ctx in kinpaku-kit.css.
@@ -1284,7 +1285,7 @@
   // Compact selection pill + 7px inset balances vertical centering in the 36px bar.
   const CONFIGURE_BAR_INSET = '7px';
   const CONFIGURE_PILL_RADIUS = '7px';
-  const CONFIGURE_SELECTION_PILL_BORDER = '1px solid oklch(70% 0.12 188)';
+  const CONFIGURE_SELECTION_PILL_BORDER = '1px solid oklch(78% 0 0 / 0.6)';
   const CONFIGURE_SELECTION_PILL_PAD = '1px 4px';
   const CONFIGURE_ROW_FONT_SIZE = '12px';
   const CONFIGURE_ROW_TRACK_H = '18px';
@@ -4114,13 +4115,13 @@
         opacity: 0,
         transform: 'scale(0.82)',
         filter: 'brightness(1.2)',
-        boxShadow: '0 0 0 0 oklch(84% 0.19 80.46 / 0.45), 0 8px 24px oklch(0% 0 0 / 0.16)',
+        boxShadow: '0 0 0 0 rgb(107 173 255 / 0.45), 0 8px 24px oklch(0% 0 0 / 0.16)',
       },
       {
         opacity: 1,
         transform: 'scale(1.08)',
         filter: 'brightness(1.15)',
-        boxShadow: '0 0 0 12px oklch(84% 0.19 80.46 / 0), 0 12px 34px oklch(0% 0 0 / 0.22)',
+        boxShadow: '0 0 0 12px rgb(107 173 255 / 0), 0 12px 34px oklch(0% 0 0 / 0.22)',
         offset: 0.55,
       },
       {
@@ -9122,8 +9123,8 @@ void main() {
   gl_FragColor = vec4(mix(ground, u_accent, dotAmt), tex.a);
 }`;
 
-  // Kinpaku gold converted to approximate sRGB 0-1 (matches oklch(84% 0.19 80.46))
-  const SHADER_ACCENT = [1.0, 0.78, 0.31];
+  // The accent as sRGB 0-1 (matches C.brand, #6badff)
+  const SHADER_ACCENT = [0.42, 0.68, 1.0];
   // Fallback ground when an element and all its ancestors are transparent -
   // matches the original off-white risograph paper.
   const SHADER_PAPER_FALLBACK = [0.975, 0.965, 0.955];
@@ -10682,11 +10683,11 @@ void main() {
       accentSoft: C.brandSoft,
       exitHover: 'oklch(58% 0.15 35 / 0.18)',
       shadow: PICKER_SHADOW,
-      chatSurface: 'oklch(22% 0.012 82)',
-      // Verdigris patina - secondary state (see site/styles/kinpaku-tokens.css)
-      patina: 'oklch(70% 0.12 188)',
-      patinaPale: 'oklch(82% 0.07 188)',
-      patinaSoft: 'oklch(70% 0.12 188 / 0.28)',
+      chatSurface: 'oklch(22% 0 0)',
+      // Secondary state: neutral gray in the Congo colorway (upstream: verdigris).
+      patina: 'oklch(78% 0 0)',
+      patinaPale: 'oklch(88% 0 0)',
+      patinaSoft: 'oklch(78% 0 0 / 0.28)',
     };
   }
 
@@ -11676,17 +11677,17 @@ void main() {
       s.id = PREFIX + '-page-chat-style';
       s.textContent =
         '@keyframes impeccable-steer-dot { 0%, 70%, 100% { opacity: 0.28; transform: scale(0.82); } 35% { opacity: 1; transform: scale(1); } }' +
-        '@keyframes impeccable-steer-processing { 0%, 100% { border-color: oklch(70% 0.12 188 / 0.28); box-shadow: 0 0 0 0 oklch(70% 0.12 188 / 0); } 50% { border-color: oklch(82% 0.07 188 / 0.55); box-shadow: 0 0 14px oklch(70% 0.12 188 / 0.18); } }' +
+        '@keyframes impeccable-steer-processing { 0%, 100% { border-color: rgb(107 173 255 / 0.28); box-shadow: 0 0 0 0 rgb(107 173 255 / 0); } 50% { border-color: rgb(143 194 255 / 0.55); box-shadow: 0 0 14px rgb(107 173 255 / 0.18); } }' +
         '@keyframes impeccable-voice-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }' +
         '#' + PREFIX + '-page-chat[data-processing="true"] { animation: impeccable-steer-processing 1.6s ease-in-out infinite; }' +
-        '@media (prefers-reduced-motion: reduce) { #' + PREFIX + '-page-chat[data-processing="true"] { animation: none; border-color: oklch(70% 0.12 188 / 0.45); } #' + PREFIX + '-page-chat[data-processing="true"] [aria-hidden="true"] span { animation: none; opacity: 0.85; } }' +
-        '#' + PREFIX + '-page-chat[data-voice-listening="true"] { border-color: oklch(70% 0.12 188 / 0.45); }' +
+        '@media (prefers-reduced-motion: reduce) { #' + PREFIX + '-page-chat[data-processing="true"] { animation: none; border-color: rgb(107 173 255 / 0.45); } #' + PREFIX + '-page-chat[data-processing="true"] [aria-hidden="true"] span { animation: none; opacity: 0.85; } }' +
+        '#' + PREFIX + '-page-chat[data-voice-listening="true"] { border-color: rgb(107 173 255 / 0.45); }' +
         '#' + PREFIX + '-page-chat-voice[data-listening="true"] svg { animation: impeccable-voice-pulse 1.1s ease-in-out infinite; }' +
         '@media (prefers-reduced-motion: reduce) { #' + PREFIX + '-page-chat-voice[data-listening="true"] svg { animation: none; opacity: 1; } }' +
         '#' + PREFIX + '-page-chat-input::placeholder { color: oklch(72% 0 0); opacity: 1; }' +
-        '#' + PREFIX + '-page-chat-input { caret-color: oklch(84% 0.19 80.46); }' +
+        '#' + PREFIX + '-page-chat-input { caret-color: #6badff; }' +
         '#' + PREFIX + '-page-chat[data-input-focused="true"]:not([data-expanded="true"]) #' + PREFIX + '-page-chat-input::placeholder { color: oklch(72% 0 0); }' +
-        '#' + PREFIX + '-page-chat-voice:hover { background: oklch(78% 0.12 82 / 0.12); }';
+        '#' + PREFIX + '-page-chat-voice:hover { background: oklch(92% 0 0 / 0.12); }';
       uiAppendStyle(s);
     }
 
@@ -12087,8 +12088,8 @@ void main() {
     const designBtn = makeIconBtn({
       id: PREFIX + '-design-toggle',
       svg: `<span style="display:inline-grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:14px;height:14px;border-radius:3px;overflow:hidden;box-shadow:inset 0 0 0 1px oklch(92% 0 0 / 0.13);flex-shrink:0">
-        <span style="background:oklch(84% 0.19 80.46)"></span>
-        <span style="background:oklch(70% 0.12 188)"></span>
+        <span style="background:#6badff"></span>
+        <span style="background:oklch(62% 0 0)"></span>
         <span style="background:oklch(91% 0 0)"></span>
         <span style="background:oklch(34% 0 0)"></span>
       </span>`,

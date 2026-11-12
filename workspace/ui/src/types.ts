@@ -74,6 +74,13 @@ export interface Tray {
   note: string;
 }
 
+/** Whether Explore may show the Library, from the person's own Congo CLI. */
+export interface LibraryAccess {
+  allowed: boolean;
+  state: "active" | "no-subscription" | "signed-out" | "no-cli" | "unknown";
+  reason: string | null;
+}
+
 export interface SavedState {
   available: boolean;
   signedIn: boolean | null;

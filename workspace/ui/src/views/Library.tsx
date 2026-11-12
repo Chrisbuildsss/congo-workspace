@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Topbar } from "../components/AppShell";
 import DesignCard, { type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
 import { useClickOutside } from "../components/Ui";
-import { BackIcon, CheckIcon, ChevronDownIcon, SearchIcon } from "../Icons";
-import { getLibraryApps, getLibraryScreens, getSaved, getScreenCategories } from "../api";
-import type { Design, LibraryApp, LibraryScreen, SavedState, ScreenCategory, TrayItem } from "../types";
+import { BackIcon, CheckIcon, ChevronDownIcon, FilterIcon, GridIcon, SearchIcon, SortIcon } from "../Icons";
+import { getLibraryAccess, getLibraryApps, getLibraryScreens, getSaved, getScreenCategories } from "../api";
+import type { Design, LibraryAccess, LibraryApp, LibraryScreen, SavedState, ScreenCategory, TrayItem } from "../types";
 
 /** Apps, Screens, or the apps saved on the account (the website's Saved). */
 export type LibraryMode = "apps" | "screens" | "saved";
@@ -150,20 +150,116 @@ function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryM
   );
 }
 
+interface ToolOption {
+  value: string;
+  label: string;
+  group?: string | null;
+}
+
+/** How many cards sit across on a wide window: the person's choice, kept in this browser. */
+const COLUMNS_KEY = "congo-explore-columns";
+const COLUMN_OPTIONS: ToolOption[] = [
+  { value: "auto", label: "Fit the window" },
+  { value: "2", label: "2 across" },
+  { value: "3", label: "3 across" },
+  { value: "4", label: "4 across" },
+];
+const SORT_OPTIONS: ToolOption[] = [
+  { value: "featured", label: "Featured" },
+  { value: "name", label: "Name, A to Z" },
+  { value: "screens", label: "Most screens" },
+];
+
+function storedColumns(): string {
+  try {
+    const value = window.localStorage.getItem(COLUMNS_KEY) ?? "";
+    return COLUMN_OPTIONS.some((option) => option.value === value) ? value : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+/** An icon in the Explore bar that opens a short list to choose from. */
+function ToolMenu({
+  label,
+  icon,
+  value,
+  fallback,
+  options,
+  onChange,
+  className = "",
+}: {
+  label: string;
+  icon: ReactNode;
+  value: string;
+  /** The value that means nothing is chosen; any other marks the icon. */
+  fallback: string;
+  options: ToolOption[];
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
+  const current = options.find((option) => option.value === value);
+  const chosen = value !== fallback && current ? current.label : null;
+  let group: string | null = null;
+  return (
+    <div className={`library-tool ${className}`} ref={ref}>
+      <button
+        type="button"
+        className="library-tool-button"
+        aria-label={chosen ? `${label}: ${chosen}` : label}
+        title={chosen ? `${label}: ${chosen}` : label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        data-active={chosen ? true : undefined}
+        onClick={() => setOpen((state) => !state)}
+      >
+        {icon}
+      </button>
+      {open ? (
+        <div className="composer-popover library-tool-menu" role="menu" aria-label={label}>
+          <p className="library-tool-title">{label}</p>
+          {options.map((option) => {
+            const heading = option.group && option.group !== group ? option.group : null;
+            if (option.group) group = option.group;
+            return (
+              <Fragment key={option.value}>
+                {heading ? <p className="library-tool-group">{heading}</p> : null}
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={option.value === value}
+                  className="library-tool-option"
+                  data-selected={option.value === value || undefined}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="option-radio">{option.value === value ? <CheckIcon size={11} /> : null}</span>
+                  {option.label}
+                </button>
+              </Fragment>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Filters({
   query,
   onQuery,
-  category,
-  onCategory,
-  categories,
   placeholder,
+  tools,
 }: {
   query: string;
   onQuery: (value: string) => void;
-  category?: string;
-  onCategory?: (value: string) => void;
-  categories?: ScreenCategory[];
   placeholder: string;
+  /** The view, category and sort icons. */
+  tools?: ReactNode;
 }) {
   return (
     <div className="library-filters">
@@ -177,21 +273,58 @@ function Filters({
           aria-label={placeholder}
         />
       </label>
-      {onCategory && categories ? (
-        <select
-          className="library-category"
-          value={category ?? ""}
-          onChange={(event) => onCategory(event.target.value)}
-          aria-label="Screen category"
-        >
-          <option value="">All categories</option>
-          {categories.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.title}
-            </option>
-          ))}
-        </select>
+      {tools}
+    </div>
+  );
+}
+
+const PRICING = "https://buildwithcongo.com/pricing";
+
+/**
+ * Shown in place of the Library when the account has no subscription. A
+ * courtesy, not protection: this code is open, and Congo's server is what
+ * refuses source pulls without a subscription.
+ */
+function ExploreGate({ access, checking, onCheck }: { access: LibraryAccess; checking: boolean; onCheck: () => void }) {
+  const signedIn = access.state === "no-subscription";
+  return (
+    <div className="explore-gate" role="status">
+      <div className="empty-grid-glyph">
+        <span /><span /><span /><span />
+      </div>
+      <h2>Explore needs a Congo subscription</h2>
+      <p>
+        Explore is the Congo Library: real, working apps and their screens, with source. It opens for a signed-in account
+        with an active subscription.
+      </p>
+      {access.state === "signed-out" ? (
+        <p className="explore-gate-step">
+          Already subscribed? Run <code>congo login</code> in your terminal, then check again.
+        </p>
       ) : null}
+      {signedIn ? <p className="explore-gate-step">You are signed in, but this account has no active subscription.</p> : null}
+      {access.state === "no-cli" ? (
+        <p className="explore-gate-step">
+          The Congo CLI is not installed. Run <code>npm install -g @buildwithcongo/cli</code>, then <code>congo login</code>.
+        </p>
+      ) : null}
+      {access.state === "unknown" ? (
+        <p className="explore-gate-step">
+          Your account could not be checked{access.reason ? `: ${access.reason}` : "."} If you are signed out, run{" "}
+          <code>congo login</code>.
+        </p>
+      ) : null}
+      <div className="explore-gate-actions">
+        <a href={PRICING} target="_blank" rel="noopener noreferrer">
+          {signedIn ? "Subscribe on buildwithcongo.com ↗" : "See pricing on buildwithcongo.com ↗"}
+        </a>
+        <button type="button" onClick={onCheck} disabled={checking}>
+          {checking ? "Checking…" : "Check again"}
+        </button>
+      </div>
+      <p className="explore-gate-note">
+        Prototypes works without a subscription. Ask your AI for a prototype and it appears there.
+      </p>
     </div>
   );
 }
@@ -207,6 +340,8 @@ export default function LibraryView({
   onAction,
   selected,
   onToggleSelect,
+  onNoteItem,
+  onAccess,
 }: {
   mode: LibraryMode;
   appSlug?: string;
@@ -219,7 +354,14 @@ export default function LibraryView({
   /** Tray keys of the items in the request tray. */
   selected: Set<string>;
   onToggleSelect: (item: TrayItem) => void;
+  /** A note typed on a card: the item joins the request with that note. */
+  onNoteItem: (item: TrayItem, note: string) => void;
+  /** Tells the shell whether the Library is showing, once known. */
+  onAccess?: (allowed: boolean) => void;
 }) {
+  const [access, setAccess] = useState<LibraryAccess | null>(null);
+  const [checking, setChecking] = useState(false);
+  const allowed = access?.allowed === true;
   const [saved, setSaved] = useState<SavedState | null>(null);
   const [apps, setApps] = useState<LibraryApp[] | null>(null);
   const [categories, setCategories] = useState<ScreenCategory[]>([]);
@@ -230,14 +372,47 @@ export default function LibraryView({
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState("");
+  const [appCategories, setAppCategories] = useState<{ id: string; title: string }[]>([]);
+  const [appCategory, setAppCategory] = useState("");
+  const [sort, setSort] = useState("featured");
+  const [columns, setColumns] = useState(storedColumns);
   const sentinel = useRef<HTMLDivElement | null>(null);
   const serial = useRef(0);
 
   const showScreens = mode === "screens" || Boolean(appSlug);
   const savedMode = mode === "saved" && !appSlug;
 
+  const checkAccess = useCallback(
+    (refresh: boolean) => {
+      setChecking(true);
+      getLibraryAccess(refresh)
+        .then((value) => {
+          setAccess(value);
+          onAccess?.(value.allowed);
+        })
+        .catch((reason: Error) => {
+          setAccess({ allowed: false, state: "unknown", reason: reason.message });
+          onAccess?.(false);
+        })
+        .finally(() => setChecking(false));
+    },
+    [onAccess],
+  );
+
   useEffect(() => {
-    if (!savedMode) return;
+    checkAccess(false);
+  }, [checkAccess]);
+
+  // Signing in happens in a terminal: look again when the person comes back.
+  useEffect(() => {
+    if (!access || allowed) return;
+    const onFocus = () => checkAccess(true);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [access, allowed, checkAccess]);
+
+  useEffect(() => {
+    if (!savedMode || !allowed) return;
     let live = true;
     getSaved()
       .then((value) => live && setSaved(value))
@@ -245,7 +420,7 @@ export default function LibraryView({
     return () => {
       live = false;
     };
-  }, [savedMode]);
+  }, [savedMode, allowed]);
   const app = useMemo(() => apps?.find((item) => item.slug === appSlug) ?? null, [apps, appSlug]);
   const actionsNote = aiConnected ? undefined : "Needs a connected AI";
 
@@ -257,16 +432,20 @@ export default function LibraryView({
   const loadApps = useCallback(() => {
     setError(null);
     getLibraryApps()
-      .then((value) => setApps(value.apps))
+      .then((value) => {
+        setApps(value.apps);
+        setAppCategories(value.categories ?? []);
+      })
       .catch((reason: Error) => setError(reason.message));
   }, []);
 
   useEffect(() => {
+    if (!allowed) return;
     loadApps();
     getScreenCategories()
       .then((value) => setCategories(value.categories))
       .catch(() => {});
-  }, [loadApps]);
+  }, [loadApps, allowed]);
 
   const loadScreens = useCallback(
     async (reset: boolean) => {
@@ -296,12 +475,12 @@ export default function LibraryView({
 
   // New filters start a fresh list.
   useEffect(() => {
-    if (!showScreens) return;
+    if (!showScreens || !allowed) return;
     setScreens([]);
     setTotal(null);
     void loadScreens(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showScreens, appSlug, category, debounced]);
+  }, [showScreens, appSlug, category, debounced, allowed]);
 
   // Infinite scroll.
   useEffect(() => {
@@ -326,11 +505,61 @@ export default function LibraryView({
       const slugs = new Set(saved.slugs);
       list = apps.filter((item) => ids.has(item.id) || slugs.has(item.slug));
     }
-    if (!needle) return list;
-    return list.filter((item) =>
-      [item.name, item.summary, item.category ?? "", item.inspiredBy ?? ""].some((text) => text.toLowerCase().includes(needle)),
-    );
-  }, [apps, debounced, savedMode, saved]);
+    if (appCategory) list = list.filter((item) => item.category === appCategory);
+    if (needle) {
+      list = list.filter((item) =>
+        [item.name, item.summary, item.category ?? "", item.inspiredBy ?? ""].some((text) => text.toLowerCase().includes(needle)),
+      );
+    }
+    // Featured is the order Congo lists them in.
+    if (sort === "name") list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === "screens") list = [...list].sort((a, b) => (b.pageCount ?? 0) - (a.pageCount ?? 0));
+    return list;
+  }, [apps, debounced, savedMode, saved, appCategory, sort]);
+
+  const tools = (
+    <>
+      {showScreens && !appSlug ? (
+        <ToolMenu
+          label="Category"
+          icon={<FilterIcon size={16} />}
+          value={category}
+          fallback=""
+          options={[{ value: "", label: "All categories" }, ...categories.map((item) => ({ value: item.id, label: item.title, group: item.group }))]}
+          onChange={setCategory}
+        />
+      ) : null}
+      {!showScreens ? (
+        <>
+          <ToolMenu
+            label="Category"
+            icon={<FilterIcon size={16} />}
+            value={appCategory}
+            fallback=""
+            options={[{ value: "", label: "All categories" }, ...appCategories.map((item) => ({ value: item.id, label: item.title }))]}
+            onChange={setAppCategory}
+          />
+          <ToolMenu label="Sort" icon={<SortIcon size={16} />} value={sort} fallback="featured" options={SORT_OPTIONS} onChange={setSort} />
+        </>
+      ) : null}
+      <ToolMenu
+        className="library-tool-view"
+        label="View"
+        icon={<GridIcon size={16} />}
+        value={columns}
+        fallback="auto"
+        options={COLUMN_OPTIONS}
+        onChange={(value) => {
+          setColumns(value);
+          try {
+            window.localStorage.setItem(COLUMNS_KEY, value);
+          } catch {
+            // Private windows may refuse storage; the choice still holds for this visit.
+          }
+        }}
+      />
+    </>
+  );
 
   const title = appSlug ? (
     <button type="button" className="library-back" onClick={onBack} aria-label="Back to apps">
@@ -347,11 +576,18 @@ export default function LibraryView({
       query={query}
       onQuery={setQuery}
       placeholder={appSlug ? `Search ${app?.name ?? "this app"}'s screens` : showScreens ? "Search screens" : "Search apps"}
-      category={category}
-      onCategory={showScreens && !appSlug ? setCategory : undefined}
-      categories={categories}
+      tools={tools}
     />
   );
+
+  if (access && !allowed) {
+    return (
+      <div className="main-scroll community-scroll">
+        <Topbar left={<span className="explore-gate-title">Explore</span>} className="library-topbar" />
+        <ExploreGate access={access} checking={checking} onCheck={() => checkAccess(true)} />
+      </div>
+    );
+  }
 
   return (
     <div className="main-scroll community-scroll">
@@ -398,7 +634,7 @@ export default function LibraryView({
         </div>
       ) : null}
 
-      <div className="community-grid">
+      <div className="community-grid explore-grid" data-columns={columns === "auto" ? undefined : columns}>
         {showScreens
           ? screens.map((screen) => {
               const design = screenDesign(screen);
@@ -417,6 +653,8 @@ export default function LibraryView({
                   selected={isSelected}
                   onToggleSelected={() => onToggleSelect(item)}
                   clickDeselects={false}
+                  natural
+                  onNote={(note) => onNoteItem(item, note)}
                 />
               );
             })
@@ -437,10 +675,12 @@ export default function LibraryView({
                   selected={isSelected}
                   onToggleSelected={() => onToggleSelect(item)}
                   clickDeselects={false}
+                  natural
+                  onNote={(note) => onNoteItem(item, note)}
                 />
               );
             })}
-        {(showScreens ? loading && screens.length === 0 : (!apps || (savedMode && !saved)) && !error) ? <GeneratingCards /> : null}
+        {(!access || (showScreens ? loading && screens.length === 0 : (!apps || (savedMode && !saved)) && !error)) ? <GeneratingCards /> : null}
         {showScreens && loading && screens.length > 0 ? <GeneratingCards count={2} /> : null}
       </div>
 

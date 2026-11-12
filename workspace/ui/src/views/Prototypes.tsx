@@ -65,6 +65,7 @@ export default function PrototypesView({
   onAppChange,
   onOpenDesign,
   onCardAction,
+  onCancel,
   chat = false,
 }: {
   /**
@@ -79,6 +80,8 @@ export default function PrototypesView({
   /** The app new requests are for (null: a new app). */
   appId: string | null;
   aiConnected: boolean;
+  /** Give up on the requests still waiting in a thread. */
+  onCancel?: (requestIds: string[]) => void;
   chatOpen: boolean;
   setChatOpen: (open: boolean) => void;
   prompt: string;
@@ -100,10 +103,9 @@ export default function PrototypesView({
       const cards = compose.designIds.map((id) => designs[id]).filter((d): d is Design => Boolean(d?.local));
       // A prototype shows as a skeleton from the moment it is asked for until
       // its first preview lands.
-      const pending = open
-        .filter((r) => r.composeId === compose.id && PROTOTYPE_REQUESTS.includes(r.type))
-        .reduce((sum, r) => sum + r.outputs.filter((id) => !designs[id]).length, 0);
-      return { compose, cards, pending };
+      const asked = open.filter((r) => r.composeId === compose.id && PROTOTYPE_REQUESTS.includes(r.type));
+      const pending = asked.reduce((sum, r) => sum + r.outputs.filter((id) => !designs[id]).length, 0);
+      return { compose, cards, pending, waiting: asked.map((r) => r.id) };
     })
     .filter((group) => group.cards.length > 0 || group.pending > 0);
   // Prototypes the AI wrote without a workspace request (from its own chat).
@@ -116,6 +118,7 @@ export default function PrototypesView({
       compose: { id: "loose", title: "From your AI's chat", prompt: "", status: "complete", designIds: loose.map((d) => d.id), messages: [] },
       cards: loose,
       pending: 0,
+      waiting: [],
     });
   }
   const total = groups.reduce((sum, group) => sum + group.cards.filter((card) => card.src).length, 0);
@@ -246,13 +249,22 @@ export default function PrototypesView({
         <div className="chat-canvas-scroll">
           {groups.length > 0 ? (
             <div className="prototype-groups">
-              {groups.map(({ compose, cards, pending }) => (
+              {groups.map(({ compose, cards, pending, waiting }) => (
                 <section className="prototype-group" key={compose.id} aria-label={compose.title}>
                   <header className="prototype-group-head">
                     <b>{compose.messages.find((message) => message.role === "user")?.text ?? compose.title}</b>
                     <span>
-                      {pending > 0 ? "Your AI is making it" : when(compose.messages[compose.messages.length - 1]?.at ?? cards[0]?.createdAt)}
+                      {waiting.length > 0
+                        ? aiConnected
+                          ? "Your AI is making it"
+                          : "Waiting for your AI · run /congo in its chat"
+                        : when(compose.messages[compose.messages.length - 1]?.at ?? cards[0]?.createdAt)}
                       {compose.id === "loose" ? "" : compose.appId ? ` · ${apps.find((app) => app.id === compose.appId)?.name ?? "your app"}` : " · new app"}
+                      {waiting.length > 0 && onCancel ? (
+                        <button type="button" className="prototype-group-cancel" onClick={() => onCancel(waiting)}>
+                          Cancel
+                        </button>
+                      ) : null}
                     </span>
                   </header>
                   {/* What was last asked in this thread and what the AI said about it: one line, not a chat. */}

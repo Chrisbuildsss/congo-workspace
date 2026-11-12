@@ -277,3 +277,27 @@ export function NoteIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Filter: three bars narrowing. */
+export function FilterIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M3.5 5.5h13M6 10h8M8.5 14.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Sort: one arrow up, one down. */
+export function SortIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path
+        d="M6.5 15.5v-11m0 0L3.75 7.25M6.5 4.5l2.75 2.75M13.5 4.5v11m0 0l-2.75-2.75m2.75 2.75l2.75-2.75"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

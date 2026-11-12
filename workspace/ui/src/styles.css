@@ -5308,3 +5308,329 @@ a.profile-item {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+
+/* Explore: every cover and screenshot whole, in its own shape, never drawn
+   larger than it is. Wide windows get more columns instead of bigger cards. */
+.explore-grid {
+  align-items: start;
+}
+
+@media (min-width: 1200px) {
+  .explore-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1720px) {
+  .explore-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 2300px) {
+  .explore-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.design-card.is-natural {
+  aspect-ratio: auto;
+  background: var(--surface-3);
+}
+
+.design-card.is-natural > .design-frame {
+  position: relative;
+  inset: auto;
+}
+
+.design-card.is-natural .design-frame img {
+  width: 100%;
+  max-width: var(--natural-width, 100%);
+  height: auto;
+  margin: 0 auto;
+  /* The shape of most covers until the picture has loaded, then its own. */
+  aspect-ratio: auto 16 / 10;
+  object-fit: contain;
+}
+
+/* Explore cards show one action, a note box and More; the list behind More
+   scrolls inside the card instead of spilling out of it. */
+.design-card.is-natural .card-quick-actions[data-more="true"] {
+  /* Clear of the menu button in the card's top corner. */
+  max-height: calc(100% - 52px);
+  flex-wrap: nowrap;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.design-card.is-natural .card-quick-actions[data-more="true"] > button {
+  flex: none;
+}
+
+.design-card.is-natural .quick-vary-form {
+  width: 132px;
+}
+
+.design-card.is-natural .quick-vary-form:focus-within {
+  width: min(220px, 100%);
+}
+
+.explore-grid .generating-card {
+  aspect-ratio: 16 / 10;
+}
+
+/* Explore without a subscription: a calm note in place of the Library. */
+.explore-gate {
+  display: flex;
+  min-height: calc(100dvh - 52px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 16px 150px;
+  text-align: center;
+}
+
+.explore-gate h2 {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.explore-gate p {
+  max-width: 380px;
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.explore-gate .explore-gate-step {
+  color: rgb(var(--ink) / 0.78);
+}
+
+.explore-gate code {
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--line);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.explore-gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.explore-gate-actions a,
+.explore-gate-actions button {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 0.5px var(--line);
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.explore-gate-actions a:hover,
+.explore-gate-actions button:hover {
+  background: var(--surface-3);
+}
+
+.explore-gate-actions button:disabled {
+  color: var(--text-soft);
+  cursor: default;
+}
+
+.explore-gate .explore-gate-note {
+  color: var(--text-dim);
+}
+
+.explore-gate-title {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Give up on a request that is still waiting. */
+.prototype-group-cancel {
+  margin-left: 10px;
+  padding: 0;
+  color: rgb(var(--ink) / 0.62);
+  background: transparent;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.prototype-group-cancel:hover {
+  color: var(--text);
+}
+
+/* Bigger navigation tabs (owner, November 12): larger icons in the rail,
+   larger labels when the sidebar is open. */
+.sidebar-link {
+  width: 36px;
+  height: 36px;
+  margin: 0 -2px;
+  border-radius: 8px;
+}
+
+.sidebar-link svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sidebar-link::after {
+  left: 44px;
+  font-size: 12px;
+}
+
+.sidebar.is-expanded .sidebar-link {
+  height: 40px;
+  margin: 0;
+  gap: 11px;
+  padding: 0 8px;
+}
+
+.sidebar.is-expanded .sidebar-link svg {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.sidebar-label {
+  font-size: 14px;
+}
+
+/* Explore bar: view, category and sort, each an icon with a short list. */
+.library-tool {
+  position: relative;
+  flex: none;
+}
+
+.library-tool-button {
+  position: relative;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--text-soft);
+  background: rgb(var(--ink) / 0.06);
+  box-shadow: inset 0 0 0 0.5px var(--line);
+  cursor: pointer;
+}
+
+.library-tool-button:hover,
+.library-tool-button[aria-expanded="true"] {
+  color: var(--text);
+  background: rgb(var(--ink) / 0.1);
+}
+
+.library-tool-button[data-active="true"] {
+  color: var(--blue);
+}
+
+.library-tool .library-tool-menu {
+  top: calc(100% + 6px);
+  right: 0;
+  bottom: auto;
+  width: 216px;
+  max-height: min(62vh, 440px);
+  overflow-y: auto;
+}
+
+.library-tool-title,
+.library-tool-group {
+  margin: 0;
+  padding: 6px 8px 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.library-tool-group {
+  padding-top: 10px;
+}
+
+.library-tool-option {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: rgb(var(--ink) / 0.8);
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.library-tool-option:hover,
+.library-tool-option[data-selected="true"] {
+  color: var(--text);
+  background: rgb(var(--ink) / 0.07);
+}
+
+/* One column on a phone: nothing to choose. */
+@media (max-width: 711px) {
+  .library-tool-view {
+    display: none;
+  }
+}
+
+@media (min-width: 1000px) {
+  .explore-grid[data-columns="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .explore-grid[data-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .explore-grid[data-columns="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.library-tool-option[data-selected="true"] .option-radio {
+  border-color: rgb(var(--ink));
+  background: rgb(var(--ink));
+  color: var(--panel);
+}
+
+.library-tool-option .option-radio {
+  flex: none;
+  margin-top: 0;
+}
+
+/* Back stays in reach while the list behind More scrolls. */
+.design-card.is-natural .card-quick-actions[data-more="true"] > .quick-more-toggle {
+  position: sticky;
+  bottom: 0;
+  background: rgba(58, 58, 58, 0.94);
+}
+
+/* Explore cards: the main action, the note box, then More. */
+.design-card.is-natural .quick-more-toggle {
+  order: 3;
+}

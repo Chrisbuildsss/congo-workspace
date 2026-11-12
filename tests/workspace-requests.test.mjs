@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { startWorkspaceServer } from '../skills/congo/scripts/workspace/server/server.mjs';
 import { describeAction, isBundleOnly, steerMessage, buildRequest, normalizeTray } from '../skills/congo/scripts/workspace/server/requests.mjs';
-import { savedItems } from '../skills/congo/scripts/workspace/server/congo-cli.mjs';
+import { libraryAccess, savedItems } from '../skills/congo/scripts/workspace/server/congo-cli.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-workspace-requests-'));
 const root = path.join(tmp, 'home');
@@ -59,10 +59,13 @@ const broadcast = (event) => {
 fs.mkdirSync(path.join(area, '.impeccable', 'live'), { recursive: true });
 fs.writeFileSync(path.join(area, '.impeccable', 'live', 'server.json'), JSON.stringify({ pid: process.pid, port: helper.address().port, token: helperToken }));
 
-// The person's Congo CLI, faked: `congo saved --json --all` lists one Saved app.
+// The person's Congo CLI, faked: `congo whoami --json` answers for the account
+// in `account`, and `congo saved --json --all` lists one Saved app.
 const congoCalls = [];
+let account = { code: 0, stdout: JSON.stringify({ email: 'person@example.test', subscription: { active: true, paidThrough: '2026-12-02' } }), stderr: '' };
 const fakeCongo = async (args) => {
   congoCalls.push(args);
+  if (args[0] === 'whoami') return account;
   return { code: 0, stdout: JSON.stringify({ items: [{ id: 'crm-app', slug: 'crm', name: 'CRM', kind: 'app', url: 'https://example.test/websites/crm', savedAt: null }], total: 1, offset: 0, limit: 100 }), stderr: '' };
 };
 const server = await startWorkspaceServer({ root, uiDir, port: 4975, token: 't', bootHelper: false, filesDir: path.join(tmp, 'congo-files'), runCongo: fakeCongo });
@@ -329,6 +332,62 @@ test("the Saved filter asks the person's own Congo CLI and reads only catalog id
   assert.deepEqual([out.available, out.signedIn], [true, false]);
   const missing = await savedItems({ run: async () => ({ code: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn congo ENOENT'), { code: 'ENOENT' }) }) });
   assert.match(missing.reason, /Install the Congo CLI/);
+});
+
+test('Explore shows the Library only to a signed-in account with a subscription; Prototypes still takes requests', async () => {
+  const open = (await api('/api/library/access')).value;
+  assert.deepEqual([open.allowed, open.state], [true, 'active']);
+  assert.equal(JSON.stringify(open).includes('person@example.test'), false, 'the email stays in the CLI');
+
+  const active = account;
+  try {
+    // Signed in, no subscription.
+    account = { code: 0, stdout: JSON.stringify({ email: 'person@example.test', subscription: { active: false, paidThrough: null } }), stderr: '' };
+    const lapsed = (await api('/api/library/access?refresh=1')).value;
+    assert.deepEqual([lapsed.allowed, lapsed.state], [false, 'no-subscription']);
+    for (const route of ['/api/library/apps', '/api/library/screens', '/api/library/categories', '/api/library/saved']) {
+      const refused = await api(route);
+      assert.equal(refused.status, 403, route);
+      assert.equal(refused.value.access.state, 'no-subscription');
+    }
+    // A request for a prototype still goes to the AI.
+    const thread = (await api('/api/composes', {})).value.compose.id;
+    const asked = await api('/api/requests', { type: 'compose', composeId: thread, text: 'A booking page for a barber' });
+    assert.equal(asked.status, 200);
+    assert.ok(asked.value.state.designs[`${asked.value.request.id}-1`]);
+
+    // Not signed in.
+    account = { code: 1, stdout: '', stderr: 'Sign in required. Run `congo login`.' };
+    const out = (await api('/api/library/access?refresh=1')).value;
+    assert.deepEqual([out.allowed, out.state], [false, 'signed-out']);
+  } finally {
+    account = active;
+  }
+  assert.equal((await api('/api/library/access?refresh=1')).value.allowed, true);
+
+  const missing = await libraryAccess({ run: async () => ({ code: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn congo ENOENT'), { code: 'ENOENT' }) }) });
+  assert.deepEqual([missing.allowed, missing.state], [false, 'no-cli']);
+  const offline = await libraryAccess({ run: async () => ({ code: 1, stdout: '', stderr: 'fetch failed' }) });
+  assert.deepEqual([offline.allowed, offline.state, offline.reason], [false, 'unknown', 'fetch failed']);
+  const garbled = await libraryAccess({ run: async () => ({ code: 0, stdout: 'hello', stderr: '' }) });
+  assert.deepEqual([garbled.allowed, garbled.state], [false, 'unknown']);
+});
+
+test('a request that is still waiting can be cancelled: its placeholder and its file go', async () => {
+  const thread = (await api('/api/composes', {})).value.compose.id;
+  const { value } = await api('/api/requests', { type: 'compose', composeId: thread, text: 'test' });
+  const id = value.request.id;
+  const placeholder = value.state.designs[`${id}-1`];
+  assert.ok(fs.existsSync(placeholder.dir));
+  const cancelled = await api('/api/requests/cancel', { id });
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.value.designs[`${id}-1`], undefined);
+  assert.equal(cancelled.value.requests.find((r) => r.id === id).status, 'error');
+  assert.equal(cancelled.value.composes.find((c) => c.id === thread).designIds.length, 0);
+  assert.equal(fs.existsSync(placeholder.dir), false);
+  assert.equal(fs.existsSync(path.join(area, 'requests', `${id}.json`)), false, 'an AI that polls later finds no request');
+  assert.equal((await api('/api/requests/cancel', { id })).status, 409);
+  assert.equal((await api('/api/requests/cancel', { id: 'nope' })).status, 404);
 });
 
 test('a prototype card exists the moment it is requested, then gains its preview, brief and status', async () => {

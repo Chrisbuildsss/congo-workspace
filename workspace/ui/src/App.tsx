@@ -88,6 +88,8 @@ export default function App() {
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
   const [offline, setOffline] = useState(false);
   const [globalPrompt, setGlobalPrompt] = useState("");
+  /** Whether Explore is showing the Library (the account has a subscription). */
+  const [exploreOpen, setExploreOpen] = useState(true);
   const [chatPrompt, setChatPrompt] = useState("");
   // The local workspace has no chat of its own: the person talks to their AI
   // in its own chat, and what they send from Explore reaches it there. The
@@ -232,6 +234,15 @@ export default function App() {
       traySelected.has(key)
         ? { ...tray, items: tray.items.filter((entry) => trayKey(entry) !== key) }
         : { ...tray, items: [...tray.items, item] },
+    );
+  };
+  /** A note typed on an Explore card: the item joins the request with it. */
+  const noteTrayItem = (item: TrayItem, note: string) => {
+    const key = trayKey(item);
+    setTray(
+      traySelected.has(key)
+        ? { ...tray, items: tray.items.map((entry) => (trayKey(entry) === key ? { ...entry, note } : entry)) }
+        : { ...tray, items: [...tray.items, { ...item, note }] },
     );
   };
   const designsFor = (ids: string[]) =>
@@ -512,6 +523,18 @@ export default function App() {
     }
   };
 
+  /** Give up on requests that are still waiting; their placeholders go. */
+  const cancelRequests = async (ids: string[]) => {
+    try {
+      let next: WorkspaceState | null = null;
+      for (const id of ids) next = await api<WorkspaceState>("/api/requests/cancel", { id });
+      if (next) setState(next);
+      showToast("Request cancelled");
+    } catch (error) {
+      showToast((error as Error).message);
+    }
+  };
+
   const deleteDesign = async () => {
     if (!deleteFor) return;
     try {
@@ -584,6 +607,8 @@ export default function App() {
               onAction={handleCardAction}
               selected={traySelected}
               onToggleSelect={toggleTray}
+              onNoteItem={noteTrayItem}
+              onAccess={setExploreOpen}
             />
           ) : null}
 
@@ -662,6 +687,7 @@ export default function App() {
               onAppChange={setProtoAppId}
               onOpenDesign={(design) => openDetail({ design, context: "Prototypes" })}
               onCardAction={handleCardAction}
+              onCancel={(ids) => void cancelRequests(ids)}
               chat={WORKSPACE_CHAT}
             />
           ) : null}
@@ -676,7 +702,13 @@ export default function App() {
                 setTray({ ...tray, note: value });
               }}
               onSubmit={(values) => void sendTray(values)}
-              placeholder={tray.items.length ? "A note for the whole request (optional)..." : "Select apps or screens, or describe what to build..."}
+              placeholder={
+                tray.items.length
+                  ? "A note for the whole request (optional)..."
+                  : exploreOpen
+                    ? "Select apps or screens, or describe what to build..."
+                    : "Describe what to prototype..."
+              }
               apps={state?.apps ?? []}
               appId={trayDestination}
               onAppChange={setTrayAppId}

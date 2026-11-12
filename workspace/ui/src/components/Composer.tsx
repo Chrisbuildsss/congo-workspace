@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowUpIcon, CheckIcon, ChevronDownIcon, CloseIcon, PlusIcon } from "../Icons";
 import type { AppRef } from "../types";
 import { useClickOutside } from "./Ui";
@@ -29,6 +29,11 @@ export default function Composer({
   compact = false,
   disabled = false,
   note,
+  noteAction,
+  header,
+  hasItems = false,
+  noAppLabel = "No app",
+  noAppHint = "Explore without touching a project",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -44,6 +49,15 @@ export default function Composer({
   disabled?: boolean;
   /** Short status under the field, e.g. why sending is unavailable. */
   note?: string;
+  /** A small button after the note, e.g. Open Prototypes. */
+  noteAction?: { label: string; onClick: () => void };
+  /** Shown above the field inside the composer, e.g. the request tray. */
+  header?: ReactNode;
+  /** Something is already attached to the request (tray items): send without text. */
+  hasItems?: boolean;
+  /** How the app menu names "no app", and its hint. */
+  noAppLabel?: string;
+  noAppHint?: string;
 }) {
   const [attachment, setAttachment] = useState<ComposerAttachment | null>(null);
   const [appOpen, setAppOpen] = useState(false);
@@ -74,7 +88,7 @@ export default function Composer({
   const submit = () => {
     if (disabled) return;
     const text = value.trim();
-    if (!text && !attachment && contextChips.length === 0) return;
+    if (!text && !attachment && contextChips.length === 0 && !hasItems) return;
     onSubmit({ text, attachment, appId });
     setAttachment(null);
   };
@@ -86,7 +100,7 @@ export default function Composer({
     }
   };
 
-  const hasInput = value.trim().length > 0 || !!attachment || contextChips.length > 0;
+  const hasInput = value.trim().length > 0 || !!attachment || contextChips.length > 0 || hasItems;
 
   return (
     <div
@@ -94,6 +108,7 @@ export default function Composer({
         focused ? "is-focused" : ""
       } ${className}`.trim()}
     >
+      {header}
       <div className="composer-body">
         {attachment || contextChips.length > 0 ? (
           <div className="composer-tokens">
@@ -181,7 +196,7 @@ export default function Composer({
             aria-expanded={appOpen}
             onClick={() => setAppOpen((open) => !open)}
           >
-            {app ? app.name : "No app"}
+            {app ? app.name : noAppLabel}
             <ChevronDownIcon size={10} />
           </button>
           {appOpen ? (
@@ -201,15 +216,24 @@ export default function Composer({
                     {(item?.id ?? null) === appId ? <CheckIcon size={11} /> : null}
                   </span>
                   <span>
-                    <b>{item ? item.name : "No app"}</b>
-                    <small>{item ? item.path : "Explore without touching a project"}</small>
+                    <b>{item ? item.name : noAppLabel}</b>
+                    <small>{item ? item.path : noAppHint}</small>
                   </span>
                 </button>
               ))}
             </div>
           ) : null}
         </div>
-        {note ? <span className="composer-note">{note}</span> : null}
+        {note || noteAction ? (
+          <span className="composer-note">
+            {note}
+            {noteAction ? (
+              <button type="button" className="composer-select composer-note-action" onClick={noteAction.onClick}>
+                {noteAction.label}
+              </button>
+            ) : null}
+          </span>
+        ) : null}
       </div>
     </div>
   );

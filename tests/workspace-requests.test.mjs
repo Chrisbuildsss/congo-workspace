@@ -9,7 +9,8 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { startWorkspaceServer } from '../skills/congo/scripts/workspace/server/server.mjs';
-import { describeAction, isBundleOnly, steerMessage, buildRequest } from '../skills/congo/scripts/workspace/server/requests.mjs';
+import { describeAction, isBundleOnly, steerMessage, buildRequest, normalizeTray } from '../skills/congo/scripts/workspace/server/requests.mjs';
+import { savedItems } from '../skills/congo/scripts/workspace/server/congo-cli.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-workspace-requests-'));
 const root = path.join(tmp, 'home');
@@ -58,7 +59,13 @@ const broadcast = (event) => {
 fs.mkdirSync(path.join(area, '.impeccable', 'live'), { recursive: true });
 fs.writeFileSync(path.join(area, '.impeccable', 'live', 'server.json'), JSON.stringify({ pid: process.pid, port: helper.address().port, token: helperToken }));
 
-const server = await startWorkspaceServer({ root, uiDir, port: 4975, token: 't', bootHelper: false });
+// The person's Congo CLI, faked: `congo saved --json --all` lists one Saved app.
+const congoCalls = [];
+const fakeCongo = async (args) => {
+  congoCalls.push(args);
+  return { code: 0, stdout: JSON.stringify({ items: [{ id: 'crm-app', slug: 'crm', name: 'CRM', kind: 'app', url: 'https://example.test/websites/crm', savedAt: null }], total: 1, offset: 0, limit: 100 }), stderr: '' };
+};
+const server = await startWorkspaceServer({ root, uiDir, port: 4975, token: 't', bootHelper: false, runCongo: fakeCongo });
 const base = `http://127.0.0.1:${server.record.port}`;
 const content = `http://127.0.0.1:${server.record.contentPort}`;
 after(async () => {
@@ -104,7 +111,7 @@ test('the AI shows as connected while its poll is parked on the helper', async (
   assert.equal(value.ai.listening, true);
 });
 
-test('a composer request becomes one steer pointing at a request file with three outputs', async () => {
+test('a request typed in Prototypes becomes one steer pointing at a request file with one output', async () => {
   composeId = (await api('/api/composes', {})).value.compose.id;
   const { status, value } = await api('/api/requests', { type: 'compose', composeId, text: 'Redesign my contacts page' });
   assert.equal(status, 200, JSON.stringify(value));
@@ -112,12 +119,13 @@ test('a composer request becomes one steer pointing at a request file with three
   const steer = await until(() => steers.find((s) => s.id === firstRequest), 'steer');
   assert.equal(steer.type, 'steer');
   assert.match(steer.id, /^[0-9a-f]{8}$/);
-  assert.match(steer.message, /^Congo workspace request [0-9a-f]{8} \(compose\)\. Use the live choices workflow for this request: "Redesign my contacts page"/);
+  assert.match(steer.message, /^Congo workspace request [0-9a-f]{8} \(compose\)\. Make one running prototype for this request: "Redesign my contacts page"/);
+  assert.match(steer.message, /outside the user's project/);
   assert.match(steer.message, /live-poll --reply [0-9a-f]{8} steer_done/);
   const file = path.join(area, 'requests', `${firstRequest}.json`);
   assert.ok(steer.message.includes(file));
   const request = JSON.parse(fs.readFileSync(file, 'utf8'));
-  assert.deepEqual(request.outputs.map((o) => o.id), [1, 2, 3].map((n) => `${firstRequest}-${n}`));
+  assert.deepEqual(request.outputs.map((o) => o.id), [`${firstRequest}-1`], 'one prototype by default');
   const compose = value.state.composes.find((c) => c.id === composeId);
   assert.equal(compose.status, 'waiting');
   assert.equal(compose.title, 'Redesign my contacts page');
@@ -146,7 +154,7 @@ test('a tweak names the Impeccable command and keeps the original as the parent'
   const { value } = await api('/api/requests', { type: 'tweak', designId: `${firstRequest}-1`, action: 'bolder', composeId });
   const id = value.request.id;
   const steer = await until(() => steers.find((s) => s.id === id), 'tweak steer');
-  assert.match(steer.message, /\(tweak\)\. Make a new design from "Airy rows": Impeccable bolder/);
+  assert.match(steer.message, /\(tweak\)\. Make a new prototype from "Airy rows": Impeccable bolder/);
   const request = JSON.parse(fs.readFileSync(path.join(area, 'requests', `${id}.json`), 'utf8'));
   assert.equal(request.action.command, 'bolder');
   assert.equal(request.design.id, `${firstRequest}-1`);
@@ -174,6 +182,123 @@ test('a library action opens its own compose and never targets the user project'
   const steer = await until(() => steers.find((s) => s.id === value.request.id), 'library steer');
   assert.match(steer.message, /Retrieve its source with the Congo CLI or MCP/);
   assert.match(steer.message, /outside the user's project/);
+});
+
+test('more prototypes the AI adds for the same request join its group', async () => {
+  writeDesign(`${firstRequest}-2`, { title: 'Dense rows' });
+  const state = await until(async () => {
+    const s = (await api('/api/state')).value;
+    return s.composes.find((c) => c.id === composeId).designIds.includes(`${firstRequest}-2`) && s;
+  }, 'second prototype');
+  assert.equal(state.designs[`${firstRequest}-2`].requestId, firstRequest);
+});
+
+test('the request tray keeps Library items with their notes, and refuses anything else', async () => {
+  const item = { kind: 'template', id: 'crm-app', version: 'r1', app: { id: 'crm-app', slug: 'crm', name: 'CRM' }, title: 'CRM', note: 'Start here', image: 'https://example.test/a.png', preview: 'javascript:alert(1)' };
+  const saved = await api('/api/tray', { items: [item, item], note: 'For realtors' });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.value.tray.items.length, 1, 'duplicates collapse');
+  assert.equal(saved.value.tray.items[0].preview, null, 'only https previews pass');
+  assert.equal((await api('/api/state')).value.tray.note, 'For realtors');
+  assert.equal((await api('/api/tray', { items: [{ kind: 'component', id: 'x' }] })).status, 400);
+  assert.equal((await api('/api/tray', { items: [{ kind: 'screen', id: '../../etc' }] })).status, 400);
+  assert.throws(() => normalizeTray({ items: Array.from({ length: 25 }, (_, i) => ({ kind: 'screen', id: `s${i}` })) }), /at most 24/);
+});
+
+test('Send hands the items, versions and notes to the AI as one prototype request, outside the project', async () => {
+  const items = [
+    { kind: 'template', id: 'crm-app', version: 'r1', app: { id: 'crm-app', slug: 'crm', name: 'CRM' }, title: 'CRM', note: 'Start from this one' },
+    { kind: 'screen', id: 'dialer-screen', version: 's7', app: { id: 'calls', slug: 'calls', name: 'Calls' }, title: 'Dialer', route: '/calls', note: 'For the calling screen' },
+  ];
+  const { status, value } = await api('/api/requests', { type: 'send', items, note: 'An outbound calling platform for realtors', appId: null, fromTray: true });
+  assert.equal(status, 200, JSON.stringify(value));
+  const id = value.request.id;
+  assert.equal(value.state.tray.items.length, 0, 'Send empties the tray');
+  const request = JSON.parse(fs.readFileSync(path.join(area, 'requests', `${id}.json`), 'utf8'));
+  assert.equal(request.type, 'send');
+  assert.equal(request.destination, 'new');
+  assert.equal(request.app, null);
+  assert.equal(request.request, 'An outbound calling platform for realtors');
+  assert.deepEqual(request.items.map((i) => [i.kind, i.id, i.version, i.note]), [
+    ['template', 'crm-app', 'r1', 'Start from this one'],
+    ['screen', 'dialer-screen', 's7', 'For the calling screen'],
+  ]);
+  assert.deepEqual(request.outputs.map((o) => o.id), [`${id}-1`]);
+  const steer = await until(() => steers.find((s) => s.id === id), 'send steer');
+  assert.match(steer.message, /\(send\)\. Make one running prototype for a new app from 2 Congo Library items: app "CRM", screen "Dialer" \(Calls\)/);
+  assert.match(steer.message, /outside the user's project/);
+  const compose = value.state.composes.find((c) => c.id === value.composeId);
+  assert.equal(compose.status, 'waiting', 'it shows in Prototypes as in progress');
+  assert.equal((await api('/api/requests', { type: 'send', items: [], note: '' })).status, 400);
+  assert.equal((await api('/api/requests', { type: 'send', items: [{ kind: 'screen', id: 'x' }], appId: 'nope' })).status, 404);
+});
+
+test('a whole-app prototype gets its own local address, where its routes and assets work', async () => {
+  const source = path.join(area, 'sources', 'proto', 'app');
+  fs.mkdirSync(source, { recursive: true });
+  const dir = path.join(area, 'designs', 'wholeapp-1');
+  fs.mkdirSync(path.join(dir, 'assets'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'assets', 'app.js'), 'console.log(1)');
+  fs.writeFileSync(path.join(dir, 'index.html'), '<!doctype html><script type="module" src="/assets/app.js"></script><div id="root"></div>');
+  // Windows tools often write a byte-order mark; the workspace still reads it.
+  fs.writeFileSync(path.join(dir, 'design.json'), String.fromCharCode(0xfeff) + JSON.stringify({ title: 'Whole app', root: true, sourceDir: source }));
+  const state = await until(async () => {
+    const s = (await api('/api/state')).value;
+    return s.designs['wholeapp-1']?.sourceDir && s;
+  }, 'whole-app prototype');
+  const design = state.designs['wholeapp-1'];
+  assert.equal(design.root, true);
+  assert.match(design.src, /^http:\/\/127\.0\.0\.1:\d+\/$/);
+  assert.notEqual(new URL(design.src).port, String(server.record.contentPort));
+  assert.match(await (await fetch(design.src)).text(), /id="root"/);
+  assert.match(await (await fetch(`${design.src}people/42`)).text(), /id="root"/, 'an app route gets the app page');
+  assert.equal(await (await fetch(`${design.src}assets/app.js`)).text(), 'console.log(1)');
+  assert.equal((await fetch(`${design.src}assets/missing.js`)).status, 404);
+  assert.equal((await fetch(`${design.src}..%2f..%2fstate.json`)).status, 404, 'nothing outside the prototype folder');
+
+  // Edit runs the prototype's source on its dev server: the AI starts it.
+  const edit = await api('/api/edit', { designId: 'wholeapp-1' });
+  assert.equal(edit.value.mode, 'app');
+  const steer = await until(() => steers.find((s) => s.id === edit.value.requestId), 'live-edit steer');
+  assert.match(steer.message, /\(live-edit\)\. Turn on Impeccable's live editor for the prototype "Whole app"/);
+  assert.ok(steer.message.includes(source));
+  broadcast({ type: 'steer_done', id: edit.value.requestId, message: 'Editor on at http://127.0.0.1:5199/' });
+  const editing = await until(async () => (await api('/api/state')).value.designs['wholeapp-1'].editUrl, 'edit address');
+  assert.equal(editing, 'http://127.0.0.1:5199/');
+  const stop = await api('/api/edit/stop', { designId: 'wholeapp-1' });
+  assert.ok(stop.value.rebuild, 'stopping asks the AI to rebuild the prototype');
+  const rebuild = await until(() => steers.find((s) => s.id === stop.value.rebuild), 'rebuild steer');
+  assert.match(rebuild.message, /\(rebuild\)/);
+  assert.equal(stop.value.state.designs['wholeapp-1'].editUrl, undefined);
+});
+
+test('rename keeps the new name through rescans; delete removes the prototype and its own source', async () => {
+  assert.equal((await api('/api/designs/rename', { id: 'wholeapp-1', title: '' })).status, 400);
+  const renamed = await api('/api/designs/rename', { id: 'wholeapp-1', title: 'Realtor dialer' });
+  assert.equal(renamed.value.designs['wholeapp-1'].title, 'Realtor dialer');
+  await new Promise((r) => setTimeout(r, 1800));
+  const state = (await api('/api/state')).value;
+  assert.equal(state.designs['wholeapp-1'].title, 'Realtor dialer');
+  const source = state.designs['wholeapp-1'].sourceDir;
+  const port = new URL(state.designs['wholeapp-1'].src).port;
+  await api('/api/designs/delete', { id: 'wholeapp-1' });
+  assert.equal(fs.existsSync(path.join(area, 'designs', 'wholeapp-1')), false);
+  assert.equal(fs.existsSync(source), false, 'its source copy in the working area goes too');
+  await assert.rejects(fetch(`http://127.0.0.1:${port}/`), 'its address closes');
+});
+
+test("the Saved filter asks the person's own Congo CLI and reads only catalog ids", async () => {
+  const { value } = await api('/api/library/saved');
+  assert.deepEqual([value.available, value.signedIn, value.ids, value.slugs], [true, true, ['crm-app'], ['crm']]);
+  assert.deepEqual(congoCalls.at(-1), ['saved', '--json', '--all']);
+  const usage = 'Congo 0.2.6\nUsage: congo COMMAND [options]\n\n  workspace  Open\n  login      Sign in\n\nExamples:\n  congo login\n';
+  const old = await savedItems({ run: async () => ({ code: 1, stdout: usage, stderr: '' }) });
+  assert.equal(old.available, false);
+  assert.match(old.reason, /Update the Congo CLI/);
+  const out = await savedItems({ run: async () => ({ code: 1, stdout: '', stderr: 'Sign in required. Run `congo login`.' }) });
+  assert.deepEqual([out.available, out.signedIn], [true, false]);
+  const missing = await savedItems({ run: async () => ({ code: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn congo ENOENT'), { code: 'ENOENT' }) }) });
+  assert.match(missing.reason, /Install the Congo CLI/);
 });
 
 test('an error reply is shown in the conversation', async () => {

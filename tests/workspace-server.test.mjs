@@ -187,7 +187,7 @@ test('the launcher opens one workspace, reuses it, reports status and stops it',
   assert.equal(first.status.ai.connected, false);
   const second = JSON.parse(execFileSync(process.execPath, [launcher, 'open', '--no-browser', '--json', '--view', 'compose'], { env, encoding: 'utf8' }));
   assert.equal(second.pid, first.pid, 'a second open reuses the running workspace');
-  assert.match(second.url, /\/compose#t=/);
+  assert.match(second.url, /\/prototypes#t=/, 'Compose is now Prototypes; the old view name still works');
   const runtime = JSON.parse(fs.readFileSync(path.join(env.CONGO_WORKSPACE_HOME, 'runtime.json'), 'utf8'));
   assert.equal(runtime.entry, launcher);
   assert.equal(JSON.parse(execFileSync(process.execPath, [launcher, 'status', '--json'], { env, encoding: 'utf8' })).running, true);

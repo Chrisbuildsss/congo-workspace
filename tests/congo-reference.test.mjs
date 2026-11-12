@@ -44,24 +44,18 @@ describe('Congo Workspace reference', () => {
     assert.match(congo, /Keep every license and notice file/);
   });
 
-  it('keeps the Congo decision round off the roll and its telemetry', () => {
-    const payload = congo.match(/```json\n([\s\S]*?)\n```/)?.[1];
-    assert.ok(payload, 'congo.md should show the decision payload');
-    const parsed = JSON.parse(payload);
-    assert.equal(parsed.buildPath, undefined);
-    for (const option of parsed.options) {
-      assert.equal(option.kind, undefined);
-      assert.ok(option.id === 'scratch' || option.id.startsWith('congo:'), option.id);
-    }
-    assert.match(congo, /No `buildPath`, `kind`, `reroll` or `canon`/);
+  it('runs no decision round of its own, so it never touches the roll or its telemetry', () => {
+    assert.doesNotMatch(congo, /serve-question/);
+    assert.doesNotMatch(congo, /```json/);
   });
 
-  it('starts new products from three real apps and adapts existing screens', () => {
-    assert.match(congo, /real apps first/);
-    assert.match(congo, /Pick the three closest apps, not screens/);
-    assert.match(congo, /main screen/);
-    assert.match(congo, /run concept-seed only when the user answers `scratch`/);
+  it('starts new products from the closest real app, one result, and adapts existing screens', () => {
+    assert.match(congo, /start from the closest real app/);
+    assert.match(congo, /\*\*Pick the closest app\.\*\*/);
+    assert.match(congo, /\*\*One result\.\*\* Show several directions only when the user asks/);
+    assert.match(congo, /Run concept-seed only when Congo is unavailable/);
     assert.match(congo, /Adapt what is there before building anything new/);
     assert.match(read('skill/reference/new-work.md'), /## 3\. Choose the right amount of invention\n\nWith Congo available, a new product/);
+    assert.match(read('skill/reference/new-work.md'), /starts from the closest real Congo app/);
   });
 });

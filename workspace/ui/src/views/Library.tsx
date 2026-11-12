@@ -3,19 +3,58 @@ import { Topbar } from "../components/AppShell";
 import DesignCard, { type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
 import { useClickOutside } from "../components/Ui";
 import { BackIcon, CheckIcon, ChevronDownIcon, SearchIcon } from "../Icons";
-import { getLibraryApps, getLibraryScreens, getScreenCategories } from "../api";
-import type { Design, LibraryApp, LibraryScreen, ScreenCategory } from "../types";
+import { getLibraryApps, getLibraryScreens, getSaved, getScreenCategories } from "../api";
+import type { Design, LibraryApp, LibraryScreen, SavedState, ScreenCategory, TrayItem } from "../types";
 
-export type LibraryMode = "apps" | "screens";
+/** Apps, Screens, or the apps saved on the account (the website's Saved). */
+export type LibraryMode = "apps" | "screens" | "saved";
 
 const PAGE = 24;
 
 const USE_THIS: QuickAction = { key: "use", label: "Use this", icon: "↘" };
 
-const MENU: MenuItem[] = [
-  { key: "use", label: "Use this" },
-  { key: "preview", label: "Preview original" },
-];
+function menuFor(selected: boolean): MenuItem[] {
+  return [
+    { key: "select", label: selected ? "Remove from request" : "Select" },
+    { key: "use", label: "Use this" },
+    { key: "preview", label: "Preview" },
+  ];
+}
+
+/** Tray key: one entry per catalog item. */
+export function trayKey(item: { kind: string; id: string }) {
+  return `${item.kind === "screen" ? "screen" : "app"}:${item.id}`;
+}
+
+export function appTrayItem(app: LibraryApp): TrayItem {
+  return {
+    kind: "template",
+    id: app.id,
+    version: app.release,
+    app: { id: app.id, slug: app.slug, name: app.name },
+    title: app.name,
+    route: null,
+    image: app.screenshot,
+    preview: app.preview,
+    url: app.url,
+    note: "",
+  };
+}
+
+export function screenTrayItem(screen: LibraryScreen): TrayItem {
+  return {
+    kind: "screen",
+    id: screen.source?.id ?? screen.id,
+    version: screen.source?.version ?? screen.version,
+    app: screen.app ? { id: screen.app.id, slug: screen.app.slug, name: screen.app.name } : null,
+    title: screen.title,
+    route: screen.route,
+    image: screen.screenshot,
+    preview: screen.preview,
+    url: screen.url,
+    note: "",
+  };
+}
 
 export function appDesign(app: LibraryApp): Design {
   return {
@@ -61,6 +100,13 @@ function GeneratingCards({ count = 4 }: { count?: number }) {
   );
 }
 
+const LABELS: Record<LibraryMode, string> = { apps: "Apps", screens: "Screens", saved: "Saved" };
+const HINTS: Record<LibraryMode, string> = {
+  apps: "Browse Congo apps and open one",
+  screens: "Browse every screen directly",
+  saved: "Apps you saved on buildwithcongo.com",
+};
+
 function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryMode) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
@@ -73,12 +119,12 @@ function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryM
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {mode === "apps" ? "Apps" : "Screens"}
+        {LABELS[mode]}
         <ChevronDownIcon size={10} />
       </button>
       {open ? (
         <div className="composer-popover visibility-popover" role="menu">
-          {(["apps", "screens"] as const).map((value) => (
+          {(["apps", "screens", "saved"] as const).map((value) => (
             <button
               type="button"
               key={value}
@@ -93,8 +139,8 @@ function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryM
             >
               <span className="option-radio">{mode === value ? <CheckIcon size={11} /> : null}</span>
               <span>
-                <b>{value === "apps" ? "Apps" : "Screens"}</b>
-                <small>{value === "apps" ? "Browse Congo apps and open one" : "Browse every screen directly"}</small>
+                <b>{LABELS[value]}</b>
+                <small>{HINTS[value]}</small>
               </span>
             </button>
           ))}
@@ -159,8 +205,8 @@ export default function LibraryView({
   onBack,
   onOpenItem,
   onAction,
-  onSave,
-  saved,
+  selected,
+  onToggleSelect,
 }: {
   mode: LibraryMode;
   appSlug?: string;
@@ -170,9 +216,11 @@ export default function LibraryView({
   onBack: () => void;
   onOpenItem: (design: Design, context?: string) => void;
   onAction: (action: CardAction, design: Design) => void;
-  onSave: (design: Design) => void;
-  saved: Set<string>;
+  /** Tray keys of the items in the request tray. */
+  selected: Set<string>;
+  onToggleSelect: (item: TrayItem) => void;
 }) {
+  const [saved, setSaved] = useState<SavedState | null>(null);
   const [apps, setApps] = useState<LibraryApp[] | null>(null);
   const [categories, setCategories] = useState<ScreenCategory[]>([]);
   const [screens, setScreens] = useState<LibraryScreen[]>([]);
@@ -186,6 +234,18 @@ export default function LibraryView({
   const serial = useRef(0);
 
   const showScreens = mode === "screens" || Boolean(appSlug);
+  const savedMode = mode === "saved" && !appSlug;
+
+  useEffect(() => {
+    if (!savedMode) return;
+    let live = true;
+    getSaved()
+      .then((value) => live && setSaved(value))
+      .catch((reason: Error) => live && setSaved({ available: false, signedIn: null, ids: [], slugs: [], reason: reason.message }));
+    return () => {
+      live = false;
+    };
+  }, [savedMode]);
   const app = useMemo(() => apps?.find((item) => item.slug === appSlug) ?? null, [apps, appSlug]);
   const actionsNote = aiConnected ? undefined : "Needs a connected AI";
 
@@ -259,11 +319,18 @@ export default function LibraryView({
   const filteredApps = useMemo(() => {
     if (!apps) return null;
     const needle = debounced.toLowerCase();
-    if (!needle) return apps;
-    return apps.filter((item) =>
+    let list = apps;
+    if (savedMode) {
+      if (!saved) return null;
+      const ids = new Set(saved.ids);
+      const slugs = new Set(saved.slugs);
+      list = apps.filter((item) => ids.has(item.id) || slugs.has(item.slug));
+    }
+    if (!needle) return list;
+    return list.filter((item) =>
       [item.name, item.summary, item.category ?? "", item.inspiredBy ?? ""].some((text) => text.toLowerCase().includes(needle)),
     );
-  }, [apps, debounced]);
+  }, [apps, debounced, savedMode, saved]);
 
   const title = appSlug ? (
     <button type="button" className="library-back" onClick={onBack} aria-label="Back to apps">
@@ -305,6 +372,23 @@ export default function LibraryView({
         </div>
       ) : null}
 
+      {savedMode && saved?.reason ? (
+        <div className="library-error" role="status">
+          {saved.reason}
+          <button
+            type="button"
+            onClick={() => {
+              setSaved(null);
+              getSaved(true)
+                .then(setSaved)
+                .catch((reason: Error) => setSaved({ available: false, signedIn: null, ids: [], slugs: [], reason: reason.message }));
+            }}
+          >
+            Check again
+          </button>
+        </div>
+      ) : null}
+
       {error ? (
         <div className="library-error" role="alert">
           {error}
@@ -318,39 +402,45 @@ export default function LibraryView({
         {showScreens
           ? screens.map((screen) => {
               const design = screenDesign(screen);
+              const item = screenTrayItem(screen);
+              const isSelected = selected.has(trayKey(item));
               return (
                 <DesignCard
                   key={screen.id}
                   design={design}
                   onOpen={() => onOpenItem(design, screen.app?.name)}
-                  onAction={onAction}
+                  onAction={(action, card) => (action === "select" ? onToggleSelect(item) : onAction(action, card))}
                   primary={USE_THIS}
+                  showMore
                   actionsDisabledNote={actionsNote}
-                  menuItems={MENU}
-                  showSelect={false}
-                  onBookmark={() => onSave(design)}
-                  bookmarked={saved.has(design.id)}
+                  menuItems={menuFor(isSelected)}
+                  selected={isSelected}
+                  onToggleSelected={() => onToggleSelect(item)}
+                  clickDeselects={false}
                 />
               );
             })
-          : (filteredApps ?? []).map((item) => {
-              const design = appDesign(item);
+          : (filteredApps ?? []).map((app) => {
+              const design = appDesign(app);
+              const item = appTrayItem(app);
+              const isSelected = selected.has(trayKey(item));
               return (
                 <DesignCard
-                  key={item.slug}
+                  key={app.slug}
                   design={design}
-                  onOpen={() => onOpenApp(item.slug)}
-                  onAction={onAction}
+                  onOpen={() => onOpenApp(app.slug)}
+                  onAction={(action, card) => (action === "select" ? onToggleSelect(item) : onAction(action, card))}
                   primary={USE_THIS}
+                  showMore
                   actionsDisabledNote={actionsNote}
-                  menuItems={MENU}
-                  showSelect={false}
-                  onBookmark={() => onSave(design)}
-                  bookmarked={saved.has(design.id)}
+                  menuItems={menuFor(isSelected)}
+                  selected={isSelected}
+                  onToggleSelected={() => onToggleSelect(item)}
+                  clickDeselects={false}
                 />
               );
             })}
-        {(showScreens ? loading && screens.length === 0 : !apps && !error) ? <GeneratingCards /> : null}
+        {(showScreens ? loading && screens.length === 0 : (!apps || (savedMode && !saved)) && !error) ? <GeneratingCards /> : null}
         {showScreens && loading && screens.length > 0 ? <GeneratingCards count={2} /> : null}
       </div>
 
@@ -366,8 +456,12 @@ export default function LibraryView({
                   : `${total} screens`
             : filteredApps
               ? filteredApps.length === 0
-                ? "No apps match. Try another search."
-                : `${filteredApps.length} apps · open one to see its screens`
+                ? savedMode
+                  ? saved?.reason
+                    ? ""
+                    : "Nothing saved yet. Save apps on buildwithcongo.com and they show here."
+                  : "No apps match. Try another search."
+                : `${filteredApps.length} ${savedMode ? "saved " : ""}apps · open one to see its screens`
               : ""}
         </span>
       </div>

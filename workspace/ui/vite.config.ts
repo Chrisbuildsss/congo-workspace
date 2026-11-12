@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// The workspace UI ships prebuilt inside the Redesign skill. Every asset is
+// The workspace UI ships prebuilt inside the Congo skill. Every asset is
 // inlined so the build is text only (the skill build copies scripts as text).
 export default defineConfig({
   plugins: [react()],

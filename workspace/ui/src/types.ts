@@ -30,6 +30,39 @@ export interface Design {
   local?: boolean;
   requestId?: string | null;
   appId?: string | null;
+  /** A whole app, served at the root of its own local address. */
+  root?: boolean;
+  /** The prototype's runnable source, for Edit and Use this. */
+  sourceDir?: string;
+  /** While the person edits it: the source's dev server with Impeccable's editor. */
+  editUrl?: string;
+}
+
+/** A Library app or screen in the request tray, with the person's note. */
+export interface TrayItem {
+  kind: "template" | "app" | "screen";
+  id: string;
+  version: string | null;
+  app: { id: string | null; slug: string | null; name: string | null } | null;
+  title: string;
+  route: string | null;
+  image: string | null;
+  preview: string | null;
+  url: string | null;
+  note: string;
+}
+
+export interface Tray {
+  items: TrayItem[];
+  note: string;
+}
+
+export interface SavedState {
+  available: boolean;
+  signedIn: boolean | null;
+  ids: string[];
+  slugs: string[];
+  reason: string | null;
 }
 
 export interface LibraryApp {
@@ -108,11 +141,12 @@ export interface WorkspaceState {
   designs: Record<string, Design>;
   projects: Project[];
   requests: WorkspaceRequest[];
+  tray: Tray;
 }
 
 export interface WorkspaceRequest {
   id: string;
-  type: "compose" | "tweak" | "build" | "library" | "start-app" | "live-edit" | "switch-to-area";
+  type: "send" | "compose" | "tweak" | "build" | "library" | "start-app" | "live-edit" | "rebuild" | "switch-to-area";
   status: "sent" | "done" | "error";
   composeId: string | null;
   appId?: string | null;
@@ -121,6 +155,9 @@ export interface WorkspaceRequest {
   createdAt: string;
   outputs: string[];
   message: string | null;
+  /** What the person asked, in a few words. */
+  summary?: string | null;
+  doneAt?: string | null;
 }
 
 export interface WorkspaceStatus {

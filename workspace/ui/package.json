@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Congo workspace interface. Built into skills/redesign/scripts/workspace/ui.",
+  "description": "Congo workspace interface. Built into skills/congo/scripts/workspace/ui.",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4868 --strictPort",
     "build": "tsc -b && vite build"

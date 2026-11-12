@@ -3980,6 +3980,43 @@ textarea:focus-visible,
   min-width: 0;
 }
 
+/* Prototypes: one group per request, newest first. */
+.prototype-groups {
+  padding-top: 52px;
+  padding-bottom: 24px;
+}
+
+.prototype-group + .prototype-group {
+  margin-top: 28px;
+}
+
+.prototype-group .chat-design-grid {
+  padding-top: 0;
+}
+
+.prototype-group-head {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 10px;
+  color: rgb(var(--ink) / 0.8);
+  font-size: 12px;
+}
+
+.prototype-group-head b {
+  overflow: hidden;
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prototype-group-head span {
+  flex: none;
+  color: rgb(var(--ink) / 0.42);
+  font-size: 11px;
+}
 .empty-grid {
   display: grid;
   min-height: calc(100dvh - 52px);
@@ -4083,6 +4120,16 @@ textarea:focus-visible,
   background: #9d3f36;
 }
 
+/* Rename a prototype: the Library's search field, inside the dialog. */
+.confirm-card > .confirm-input {
+  display: flex;
+  justify-content: flex-start;
+  margin: 12px 0 16px;
+}
+
+.confirm-card .confirm-input input {
+  width: 100%;
+}
 @media (min-width: 1200px) {
   .board-strip {
     grid-auto-columns: calc((100% - 30px) / 4);
@@ -4387,8 +4434,176 @@ a.profile-item {
 }
 
 .composer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: rgb(var(--ink) / 0.4);
   font-size: 10px;
+}
+
+.composer-note-action {
+  color: rgb(var(--ink) / 0.86);
+  background: rgb(var(--ink) / 0.06);
+}
+
+/* Request tray: the selected Library items inside the composer, one note each. */
+.request-tray {
+  padding: 6px 6px 4px;
+}
+
+.request-tray-head {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px 4px 4px;
+  color: rgb(var(--ink) / 0.5);
+  font-size: 10px;
+  font-weight: 480;
+}
+
+.request-tray-head span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-tray-head button {
+  height: 20px;
+  flex: none;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  color: rgb(var(--ink) / 0.5);
+  background: transparent;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.request-tray-head button:hover {
+  color: rgb(var(--ink) / 0.86);
+  background: rgb(var(--ink) / 0.06);
+}
+
+.request-tray-items {
+  display: flex;
+  max-height: 172px;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.request-tray-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgb(var(--ink) / 0.06);
+  animation: trayIn 180ms var(--ease-out);
+}
+
+.request-tray-thumb {
+  display: block;
+  width: 44px;
+  height: 30px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgb(var(--ink) / 0.08);
+}
+
+.request-tray-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.request-tray-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.request-tray-title {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  color: rgb(var(--ink) / 0.8);
+  font-size: 11px;
+}
+
+.request-tray-title b {
+  overflow: hidden;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-tray-title small {
+  flex: none;
+  color: rgb(var(--ink) / 0.45);
+  font-size: 10px;
+}
+
+.request-tray-note {
+  width: 100%;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: rgb(var(--ink) / 0.75);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+}
+
+.request-tray-note::placeholder {
+  color: rgb(var(--ink) / 0.36);
+}
+
+.request-tray-remove {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-soft);
+  background: transparent;
+  cursor: pointer;
+}
+
+.request-tray-remove:hover {
+  color: var(--text);
+  background: rgb(var(--ink) / 0.07);
+}
+
+@keyframes trayIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .request-tray-item {
+    animation: none;
+  }
 }
 
 .workspace-banner {
@@ -4888,6 +5103,25 @@ a.profile-item {
   font-size: 11px !important;
 }
 
+/* A prototype the editor can't pick in: describe the change for the AI. */
+.detail-describe {
+  position: relative;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px 8px;
+}
+
+.detail-describe p {
+  margin: 0;
+  text-align: center;
+}
+
+.detail-describe input {
+  width: min(520px, 90vw);
+}
 .live-log {
   max-height: 220px;
   margin: 0 10px 10px 0;

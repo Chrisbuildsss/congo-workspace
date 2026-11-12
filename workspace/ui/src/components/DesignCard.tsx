@@ -13,6 +13,8 @@ import { useClickOutside } from "./Ui";
 export type CardAction =
   | "use"
   | "build"
+  | "select"
+  | "rename"
   | "subtle"
   | "layout"
   | "colorize"
@@ -81,6 +83,7 @@ export default function DesignCard({
   showHoverActions = true,
   compact = false,
   saved = false,
+  clickDeselects = true,
 }: {
   design: Design;
   onOpen: () => void;
@@ -89,7 +92,7 @@ export default function DesignCard({
   selected?: boolean;
   onToggleSelected?: () => void;
   bookmarked?: boolean;
-  /** Build this (Compose) or Use this (Library). */
+  /** Use this, on Library items and on prototypes. */
   primary?: QuickAction;
   tweaks?: QuickAction[];
   showMore?: boolean;
@@ -102,6 +105,8 @@ export default function DesignCard({
   showHoverActions?: boolean;
   compact?: boolean;
   saved?: boolean;
+  /** Clicking a selected card deselects it (Variant); the Library opens it instead. */
+  clickDeselects?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -122,7 +127,7 @@ export default function DesignCard({
   };
 
   const open = () => {
-    if (selected) onToggleSelected?.();
+    if (selected && clickDeselects) onToggleSelected?.();
     else onOpen();
   };
 
@@ -164,7 +169,8 @@ export default function DesignCard({
           <button
             type="button"
             className="selection-bubble"
-            aria-label="Toggle selection"
+            aria-label={selected ? `Remove ${design.title} from your request` : `Select ${design.title}`}
+            aria-pressed={Boolean(selected)}
             onClick={(event) => {
               event.stopPropagation();
               onToggleSelected?.();

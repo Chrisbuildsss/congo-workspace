@@ -35,8 +35,9 @@ test("Congo makes prototypes from real apps: one by default, main screen first, 
   assert.match(src,/a few directions for my dashboard/,'redesigns still trigger it');
   assert.match(src,/You are the only AI/);
   assert.match(src,/\*\*One prototype by default\.\*\*/);
-  assert.match(src,/\*\*Main screen first\.\*\*/);
-  assert.match(src,/\*\*Whole app or screens is your call,\*\*/);
+  assert.match(src,/\*\*The user's request decides how much you build\.\*\*/);
+  assert.match(src,/\*\*When it is open, prefer a main screen\.\*\*/);
+  assert.match(src,/a preference to keep you fast, not a rule/);
   assert.match(src,/\*\*Adapt before building\.\*\*/);
   assert.match(src,/no built-in ways in/);
   assert.match(src,/\*\*Prototypes go into Congo files,\*\* never straight into a code project/);
@@ -51,7 +52,8 @@ test('workspace.md: every request makes a prototype in a Congo file; Pull into a
   for(const section of ['## `send`: Explore items with notes','## `library`: one Explore item','## `compose`','## `expand`','## `tweak`','## `build`: Pull into a project','## Live editing a prototype']) assert.ok(ref.includes(section),section);
   assert.match(ref,/\*\*One prototype per request\.\*\*/);
   assert.match(ref,/\*\*Prototypes never go into the user's project\.\*\*/);
-  assert.match(ref,/\*\*Main screen first, in this order:\*\*/);
+  assert.match(ref,/\*\*How much to build is the user's call,\*\*/);
+  assert.match(ref,/prefer one main screen/);
   assert.match(ref,/"brief": \{/,'briefs on product ideas');
   assert.match(ref,/never on design-only prototypes/);
   assert.match(ref,/congo create <template-id> --project <new folder>/,'Pull into a new project');

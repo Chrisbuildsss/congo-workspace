@@ -13,6 +13,7 @@ The workspace sends the user's actions to you through Impeccable's live helper a
 ## Every request
 
 - Read the request file named in the message (`requests/<id>.json` in the working area). It holds the type, the user's words (`request`), the project it is for (`app.path`, or null), any Library `items` or `item`, the prototype (`design`), the `action`, and `outputs`.
+- **How much to build is the user's call,** read from what they picked and said: a whole app when they want an app, a screen when they want a screen. When it is open (ideas, options, anything unclear), prefer one main screen of the closest app, adapted fast; Expand does the rest once they choose. Finish with `--status ready` when the whole prototype is adapted and `--status main` when it started from a screen, which gives the user Expand.
 - Each output is a prototype folder in a Congo file: `outputs[i].dir`, with `preview` (where the running build goes), `source` (the working source) and `meta` (`prototype.json`). The workspace already shows a placeholder card for it.
 - **Prototypes never go into the user's project.** Only `build` (Pull into a project) changes code.
 - **One prototype per request.** When the user asked for several, make more folders beside `outputs[0].dir` named `<id>-2`, `<id>-3` in the same Congo file.
@@ -30,14 +31,14 @@ A folder in a Congo file:
 | `source/` | The working source of a whole app. Its `node_modules` is a link to a prepared copy; never copy dependencies into a Congo file. |
 | `history.jsonl` | One line per event. The helpers add to it; you may add `{"at": "<iso time>", "type": "note", "text": "..."}` lines. |
 
-`status` is `main` when the main screen or workflow is adapted and the rest is still the source app, and `ready` when the whole prototype is done. The helpers set it; set it yourself when you write a preview by hand.
+`status` is `main` when one screen (or a few) is adapted and the rest is still the source app, which shows the user an Expand action; `ready` when the whole prototype is done. The helpers set it; set it yourself when you write a preview by hand.
 
-**Main screen first, in this order:**
+**The steps, in this order:**
 
 1. `WS prepare <template-id> --into <outputs[0].dir> --json`. It copies the app's source into `source/`, links its dependencies and commits it once as "congo source", so later changes are a clean diff. The first use of an app downloads and installs it (the user's Congo sign-in and subscription apply); later uses reuse it and take seconds.
-2. Adapt the main screen or main workflow in `source/`: the product's name, content, sample data, labels and the obvious actions. Keep the app's design and behavior. Leave the other screens as they are.
-3. `WS preview <outputs[0].dir> --status main --json`, then add `title`, `summary`, `source`, `sources` and `notices` to `prototype.json` (keep the fields already there).
-4. Reply with one line: what is adapted, and that Expand builds out the rest.
+2. Adapt as much as the user asked for in `source/`: the product's name, content, sample data, labels and the obvious actions. Keep the app's design and behavior. For one screen, read only the files that screen needs, change them in place and leave the other screens as they are; make the prototype open on that screen.
+3. `WS preview <outputs[0].dir> --status main|ready --json`, then add `title`, `summary`, `source`, `sources` and `notices` to `prototype.json` (keep the fields already there).
+4. Reply with one line: what is adapted and, for `main`, that Expand builds out the rest.
 
 **One page or screen** (no whole app needed): write a static `preview/index.html` that holds the page's markup, with its stylesheets, fonts and images beside it and only the scripts its interactions need, then set `status` to `ready`. Keep the markup in the file, one element per line, so Impeccable's editor can pick in it.
 
@@ -66,7 +67,7 @@ The user selected apps and screens in Explore and pressed Send. `items` lists ea
    - screens from several apps: start from the app that fits the product best and fit the others into it, in its tokens;
    - nothing selected: search the Library for the closest app or screens.
 2. **Get the source** with `WS prepare` for the app you start from. For a screen from another app, read it from a scratch project (`congo init --new`, then `congo add`) and rebuild it in the app's own code, keeping its notices; `congo add` into the app is fine when it accepts the screen. If `congo whoami` shows the user is not signed in or not subscribed, tell them here to run `congo login` themselves or subscribe, and reply `error "Needs Congo sign-in and a subscription"`.
-3. **Main screen first** as above: the screen the notes point at, or the app's main working screen.
+3. **Build as much as they asked for** (above).
 
 ## `library`: one Explore item
 
@@ -76,12 +77,12 @@ Prototype this, or a quick action, on an Explore card. `item` is the app or scre
 
 Make one prototype for the user's words (several only when asked). It can be anything: a new product, a competitor to something, ideas from the user's work, a redesign.
 
-- **Something new:** start from the closest Congo app or screens, main screen first. Add a brief when it is a product idea.
+- **Something new:** start from the closest Congo app or screens, as much as they asked for (above). Add a brief when it is a product idea.
 - **A redesign of the user's project** (`app.path`): read the real page's source and build the redesigned page from a copy of it, as a static page. When the user asked for several directions, read Impeccable's `live.md` section "Plan three variants" for the identity lock and give each direction a different primary axis. A narrow request stays narrow.
 
 ## `expand`
 
-The user pressed Expand on a prototype whose main screen is done. Build out the rest of the app around it **in the same prototype** (`design.dir`): adapt the remaining screens the product needs, relabel the navigation, and remove what the product has no use for. Then `WS preview <design.dir> --status ready --json` and reply with one line.
+The user pressed Expand on a prototype that started from one screen. Build out the rest of the app around it **in the same prototype** (`design.dir`): adapt the remaining screens the product needs, relabel the navigation, and remove what the product has no use for. Then `WS preview <design.dir> --status ready --json` and reply with one line.
 
 ## `tweak`: a quick action on a prototype
 

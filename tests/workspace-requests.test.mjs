@@ -254,6 +254,8 @@ test('Send hands the items, versions and notes to the AI as one prototype reques
   assert.deepEqual(request.outputs.map((o) => o.id), [`${id}-1`]);
   const steer = await until(() => steers.find((s) => s.id === id), 'send steer');
   assert.match(steer.message, /\(send\)\. Make one running prototype for a new app from 2 Congo Library items: app "CRM", screen "Dialer" \(Calls\)/);
+  assert.match(steer.message, /Build as much as they asked for; when that is open, prefer one main screen first/);
+  assert.equal(request.scope, undefined, 'how much to build is judgment, not a label from the workspace');
   assert.match(steer.message, /outside the user's project/);
   const compose = value.state.composes.find((c) => c.id === value.composeId);
   assert.equal(compose.status, 'waiting', 'it shows in Prototypes as in progress');

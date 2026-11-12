@@ -170,6 +170,25 @@ export function sourceMap(source) {
 }
 
 /**
+ * A Congo file copied to another computer (or restored from a backup) arrives
+ * without its dependencies: they are a link to this computer's prepared copy.
+ * This puts the link back, preparing the app first if it is not here yet.
+ */
+export async function ensureModules({ root, prototypeDir, env = process.env, run = runCongo }) {
+  const meta = readJson(path.join(prototypeDir, 'prototype.json'), {}) ?? {};
+  const source = meta.sourceDir ? path.resolve(prototypeDir, meta.sourceDir) : path.join(prototypeDir, 'source');
+  if (!fs.existsSync(path.join(source, 'package.json'))) return { linked: false };
+  if (fs.existsSync(path.join(source, 'node_modules', '.bin')) || fs.existsSync(path.join(source, 'node_modules', 'vite'))) return { linked: false };
+  const templateId = meta.base?.id;
+  if (!templateId) return { linked: false };
+  const app = await prepareApp({ root, templateId, env, run });
+  try { fs.rmSync(path.join(source, 'node_modules'), { force: true }); } catch {}
+  linkModules(source, app.dir);
+  appendHistory(prototypeDir, { type: 'relinked', template: templateId });
+  return { linked: true };
+}
+
+/**
  * Builds a prototype's running preview from its source into preview/, and
  * records its status (`main` after the main screen, `ready` after Expand).
  */

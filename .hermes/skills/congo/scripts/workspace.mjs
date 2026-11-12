@@ -19,7 +19,7 @@ import crypto from 'node:crypto';
 import { dataDir, layout } from './workspace/server/paths.mjs';
 import { readJson, writeJsonAtomic } from './workspace/server/store.mjs';
 import { createCongoFile, createStub, filesRoot, listCongoFiles, previewDir } from './workspace/server/files.mjs';
-import { buildPreview, prepareSource } from './workspace/server/prepare.mjs';
+import { buildPreview, ensureModules, prepareSource } from './workspace/server/prepare.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const entry = fileURLToPath(import.meta.url);
@@ -215,6 +215,8 @@ async function main() {
     const dir = args._[1] ? path.resolve(args._[1]) : '';
     if (!dir) throw new Error('Use: preview <prototype folder> [--status main|ready]');
     const status = typeof args.status === 'string' && ['main', 'ready'].includes(args.status) ? args.status : undefined;
+    // A Congo file that was moved here from another computer gets its dependencies linked again first.
+    await ensureModules({ root: files.root, prototypeDir: dir });
     const result = buildPreview({ prototypeDir: dir, status });
     return print(args, result, `Preview built in ${result.seconds}s: ${result.preview}`);
   }

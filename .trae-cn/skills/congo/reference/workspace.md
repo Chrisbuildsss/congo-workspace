@@ -16,7 +16,7 @@ The workspace sends the user's actions to you through Impeccable's live helper a
 - **How much to build is the user's call,** read from what they picked and said: a whole app when they want an app, a screen when they want a screen. When it is open (ideas, options, anything unclear), prefer one main screen of the closest app, adapted fast; Expand does the rest once they choose. Finish with `--status ready` when the whole prototype is adapted and `--status main` when it started from a screen, which gives the user Expand.
 - Each output is a prototype folder in a Congo file: `outputs[i].dir`, with `preview` (where the running build goes), `source` (the working source) and `meta` (`prototype.json`). The workspace already shows a placeholder card for it.
 - **Prototypes never go into the user's project.** Only `build` (Pull into a project) changes code.
-- **One prototype per request.** When the user asked for several, make more folders beside `outputs[0].dir` named `<id>-2`, `<id>-3` in the same Congo file.
+- **One prototype per request.** When the user asked for several, make more beside `outputs[0].dir` named `<id>-2`, `<id>-3` in the same Congo file; `WS prepare --into <that folder>` creates the folder. Prepare apps one after another: several first-time downloads at once are slower than the same downloads in turn.
 - Reply exactly once: `impeccable live-poll --reply <id> steer_done "<one short line for the user>"`. On failure: `--reply <id> error "<short reason>"`. Then poll again.
 - Missing context is asked in this chat. Keep the request open while you wait.
 
@@ -26,7 +26,7 @@ A folder in a Congo file:
 
 | File | What it is |
 | --- | --- |
-| `prototype.json` | `title`, `status`, and optionally `summary` (one sentence), `format` (`desktop` or `mobile`), `brief`, `source` (`kind`, `id`, `version`, `app` of the Congo item it starts from), `sources` (every Congo item used), `notices`. |
+| `prototype.json` | `title`, `status`, and optionally `summary` (one sentence), `format` (`desktop` or `mobile`), `brief`, `source` (`kind`, `id`, `version`, `app` of the Congo item it starts from), `sources` (every Congo item used), `notices` (a list of the license and notice file paths in the prototype). |
 | `preview/` | The running build: `index.html` and its assets. The card and the open view show this. |
 | `source/` | The working source of a whole app. Its `node_modules` is a link to a prepared copy; never copy dependencies into a Congo file. |
 | `history.jsonl` | One line per event. The helpers add to it; you may add `{"at": "<iso time>", "type": "note", "text": "..."}` lines. |
@@ -86,7 +86,7 @@ The user pressed Expand on a prototype that started from one screen. Build out t
 
 ## `tweak`: a quick action on a prototype
 
-Makes a **new** prototype in `outputs[0].dir`; the original (`design.dir`) stays. For a whole app, copy the original's `source/` without `node_modules`, link `node_modules` the way the original does (a junction on Windows, `mklink /J`; a symlink elsewhere), change the copy, and `WS preview`. For a static page, copy `preview/` and change the copy.
+Makes a **new** prototype in `outputs[0].dir`; the original (`design.dir`) stays. For a whole app, copy the original's `source/` without `node_modules` (its `.git` comes along, so the "congo source" baseline is kept), link `node_modules` the way the original does (a junction on Windows, `mklink /J`; a symlink elsewhere), change the copy, and `WS preview`. For a static page, copy `preview/` and change the copy.
 
 | `action.key` | What to do |
 | --- | --- |
@@ -110,6 +110,6 @@ Reply with one line saying where it went and how to run it. The prototype stays 
 
 ## Live editing a prototype
 
-A `live-edit` request with a `design` whose `sourceDir` is set: the user pressed Edit on a whole-app prototype. Start the source's dev server on a free local port and keep it running, run Impeccable's live boot in `sourceDir` with `--allow-missing-context` (a prototype has no PRODUCT.md or DESIGN.md; never start an interview for one), following its `live.md`, and `live-setup.md` on first use (a Vite single-page app injects into `index.html`), and reply `steer_done` with the dev server's local URL. On Windows never pipe `impeccable live` output into another command; redirect it to a file. Then poll that folder's helper and handle the user's picks as `live.md` says; accepted changes go into the prototype's source. When the user stops editing, a `rebuild` request follows: `WS preview <design.dir>`, reply, and poll the working area again.
+A `live-edit` request with a `design` whose `sourceDir` is set: the user pressed Edit on a whole-app prototype. Start the source's dev server on a free local port and keep it running, run Impeccable's live boot in `sourceDir` with `--allow-missing-context` (a prototype has no PRODUCT.md or DESIGN.md; never start an interview for one), following its `live.md`, and `live-setup.md` on first use (a Vite single-page app injects into `index.html`), and reply `steer_done` with the dev server's local URL. On Windows never pipe `impeccable live` output into another command; redirect it to a file. Then poll that folder's helper and handle the user's picks as `live.md` says; accepted changes go into the prototype's source. When the user stops editing, a `rebuild` request follows on the same helper: run `WS preview <design.dir>` (it leaves Impeccable's injected editor script out of the preview), reply there, stop the dev server and that folder's live helper, and poll the working area again.
 
 `start-app` and `switch-to-area` requests say what to do in their message.

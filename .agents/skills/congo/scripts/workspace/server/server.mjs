@@ -449,7 +449,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         return { request, compose: null };
       }
       let target = compose ? state.composes.find((c) => c.id === compose.id) : null;
-      if (!target) target = newCompose(state, type === 'library' ? item.title : userText, body.appId);
+      // A thread is titled with the person's words when they wrote any.
+      if (!target) target = newCompose(state, type === 'library' ? item.title : (type === 'send' && text ? text.split(/[.!?\n]/)[0] : userText), body.appId);
       // Send takes what the tray held; the tray starts empty again.
       if (type === 'send' && body.fromTray) state.tray = { items: [], note: '' };
       if (type === 'compose' && (target.title === 'New design' || !target.title)) target.title = text.split(/[.!?\n]/)[0].slice(0, 60) || 'New design';
@@ -951,6 +952,15 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         store.update((s) => {
           if (s.editTarget === design.id) s.editTarget = null;
           delete s.designs[design.id];
+          // A request whose only prototype was removed is no longer waiting.
+          for (const r of Object.values(s.requests)) {
+            if (r.status === 'sent' && r.outputs?.length && r.outputs.every((id) => id === design.id || !s.designs[id])) {
+              r.status = 'error';
+              r.message = 'Removed before it was finished';
+              r.doneAt = new Date().toISOString();
+              if (r.composeId) settleCompose(s, r.composeId);
+            }
+          }
           for (const c of s.composes) c.designIds = c.designIds.filter((id) => id !== design.id);
           for (const p of s.projects) p.designIds = p.designIds.filter((id) => id !== design.id);
         });

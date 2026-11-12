@@ -64,7 +64,7 @@ When the user wants to explore and pick, asks for the workspace, or sends from i
    cd <area> && <poll launcher> live-poll
    ```
 
-3. Everything the user does in the workspace arrives at your poll as `Congo workspace request <id> (<type>)`. Handle each with [reference/workspace.md](reference/workspace.md), then poll again.
+3. Everything the user does in the workspace arrives at your poll as `Congo workspace request <id> (<type>)`. Handle each with [reference/workspace.md](reference/workspace.md), then poll again. The workspace has no chat of its own: say here what arrived and what you did, as if they had typed it to you.
 
 A request made here in chat while the workspace is open ("show me a few directions for my dashboard") goes in with `WS request --text "<the user's words>"`, so its card appears at once, and comes back to your poll like any other.
 

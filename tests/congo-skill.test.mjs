@@ -51,6 +51,7 @@ test('workspace.md: every request makes a prototype in a Congo file; Pull into a
   const ref=read('skills','congo','reference','workspace.md');
   for(const section of ['## `send`: Explore items with notes','## `library`: one Explore item','## `compose`','## `expand`','## `tweak`','## `build`: Pull into a project','## Live editing a prototype']) assert.ok(ref.includes(section),section);
   assert.match(ref,/\*\*One prototype per request\.\*\*/);
+  assert.match(ref,/\*\*The conversation is this chat\.\*\* The local workspace shows no messages and no replies/);
   assert.match(ref,/\*\*Prototypes never go into the user's project\.\*\*/);
   assert.match(ref,/\*\*How much to build is the user's call,\*\*/);
   assert.match(ref,/prefer one main screen/);

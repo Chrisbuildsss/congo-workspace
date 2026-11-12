@@ -4,6 +4,13 @@ Branch `codex/library-first-20261111` (workspace PR #1), checked on Windows 11 o
 
 Everything ran in scratch folders: a scratch workspace home (`CONGO_WORKSPACE_HOME`), a scratch Congo-files folder (`CONGO_FILES_DIR`) standing in for `Documents\Congo`, and scratch projects. The owner's real workspace install and real Documents were not used, with one exception recorded under Problems.
 
+## Changes after the timed runs (owner, November 12)
+
+- **No chat in the local workspace.** The Prototypes conversation rail, its replies and its request box are switched off locally (`WORKSPACE_CHAT` in `workspace/ui/src/App.tsx`; the code stays for the hosted workspace, where Congo AI answers). Prototypes shows only cards. Explore keeps its bar: what is typed or selected there goes to the person's AI, and the skill has the AI say in its own chat what arrived. A failed request still shows its reason on the card. Checked in a browser with stand-in prototypes at 390 and 1440 px, light and dark (`workspace/qa/no-chat-rail/`); not re-run with an AI.
+- **Live editor colorway.** Impeccable's gold and teal became a black bar with one light blue accent (`workspace/qa/editor-colors/`).
+
+The timings and results below were measured before these two changes; neither changes how requests reach the AI.
+
 ## Who did what
 
 | Part | Done by |
@@ -78,7 +85,7 @@ Nothing is installed up front: an app is installed the first time a prototype us
 ### 3. Prototypes
 
 - **The card appears right away:** 0.3 s after Send, as the clone's existing skeleton card, with no label (owner's instruction).
-- **Desktop preview:** an opened prototype's frame was 1388 px wide on a 1440 px screen (everything but the 52 px rail), with the side panel closed and a button to reopen it. At phone width Prototypes opens on the cards, not the conversation.
+- **Desktop preview:** an opened prototype's frame was 1388 px wide on a 1440 px screen (everything but the 52 px rail), with the side panel closed (the local workspace now has no side panel at all).
 - **Brief:** behind the "i" icon on the card and in the open view, closed by default.
 - **Main screen first, Expand builds the rest:** run A and run B. Expand works in the same prototype and ends with status ready.
 - **Full app clickable end to end:** yes; whole-app prototypes run at their own local address with their own routes.

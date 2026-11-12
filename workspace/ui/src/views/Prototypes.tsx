@@ -65,7 +65,14 @@ export default function PrototypesView({
   onAppChange,
   onOpenDesign,
   onCardAction,
+  chat = false,
 }: {
+  /**
+   * The conversation rail (messages, replies and a request box). Off in the
+   * local workspace, where the person talks to their own AI in its own chat;
+   * the hosted workspace turns it on for Congo AI.
+   */
+  chat?: boolean;
   composes: Compose[];
   designs: Record<string, Design>;
   apps: AppRef[];
@@ -119,21 +126,27 @@ export default function PrototypesView({
     .flatMap((compose) => compose.messages.map((message) => ({ ...message, composeId: compose.id })))
     .sort((a, b) => ((a.at ?? "") < (b.at ?? "") ? -1 : 1));
 
+  const showChat = chat && chatOpen;
+
   return (
-    <div className={`chat-layout ${chatOpen ? "chat-panel-open" : "chat-panel-closed"}`}>
+    <div className={`chat-layout ${showChat ? "chat-panel-open" : "chat-panel-closed"}`}>
       <header className="chat-header">
         <div className="chat-header-left">
-          <button
-            type="button"
-            className="chat-project-title"
-            aria-label={chatOpen ? "Prototypes" : "Open the conversation"}
-            onClick={() => {
-              if (!chatOpen) setChatOpen(true);
-            }}
-          >
-            Prototypes{total ? ` · ${total}` : ""}
-          </button>
-          {chatOpen ? (
+          {chat ? (
+            <button
+              type="button"
+              className="chat-project-title"
+              aria-label={chatOpen ? "Prototypes" : "Open the conversation"}
+              onClick={() => {
+                if (!chatOpen) setChatOpen(true);
+              }}
+            >
+              Prototypes{total ? ` · ${total}` : ""}
+            </button>
+          ) : (
+            <h1 className="chat-project-title prototypes-title">Prototypes{total ? ` · ${total}` : ""}</h1>
+          )}
+          {showChat ? (
             <button
               type="button"
               className="chat-header-icon chat-collapse"
@@ -146,7 +159,7 @@ export default function PrototypesView({
         </div>
       </header>
 
-      {chatOpen ? (
+      {showChat ? (
         <aside className="chat-panel">
           <div className="chat-messages">
             {messages.length === 0 && open.length === 0 ? (
@@ -229,7 +242,7 @@ export default function PrototypesView({
         </aside>
       ) : null}
 
-      <main className={`chat-canvas ${chatOpen ? "" : "is-full"}`}>
+      <main className={`chat-canvas ${showChat ? "" : "is-full"}`}>
         <div className="chat-canvas-scroll">
           {groups.length > 0 ? (
             <div className="prototype-groups">
@@ -275,12 +288,23 @@ export default function PrototypesView({
                 </section>
               ))}
             </div>
-          ) : (
+          ) : chat ? (
             <div className="empty-grid">
               <span />
               <span />
               <span />
               <span />
+            </div>
+          ) : (
+            <div className="chat-empty-state prototypes-empty">
+              <div className="empty-grid-glyph">
+                <span /><span /><span /><span />
+              </div>
+              <p>
+                {aiConnected
+                  ? "Nothing here yet. Send apps or screens from Explore, or ask your AI for a prototype, and it appears here."
+                  : "Nothing here yet. Run /congo in your AI's chat to connect it, then send from Explore or ask it for a prototype."}
+              </p>
             </div>
           )}
         </div>

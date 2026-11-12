@@ -89,8 +89,13 @@ export default function App() {
   const [offline, setOffline] = useState(false);
   const [globalPrompt, setGlobalPrompt] = useState("");
   const [chatPrompt, setChatPrompt] = useState("");
-  // On a phone the prototypes come first; the conversation opens from the header.
-  const [chatOpen, setChatOpen] = useState(() => window.innerWidth > 764);
+  // The local workspace has no chat of its own: the person talks to their AI
+  // in its own chat, and what they send from Explore reaches it there. The
+  // hosted workspace turns the conversation rail on for Congo AI: set this to
+  // true and the rail, its messages, replies and request box all come back.
+  const WORKSPACE_CHAT = false;
+  const [chatOpenState, setChatOpen] = useState(() => window.innerWidth > 764);
+  const chatOpen = WORKSPACE_CHAT && chatOpenState;
   const [detail, setDetail] = useState<{
     design: Design;
     context?: string;
@@ -657,6 +662,7 @@ export default function App() {
               onAppChange={setProtoAppId}
               onOpenDesign={(design) => openDetail({ design, context: "Prototypes" })}
               onCardAction={handleCardAction}
+              chat={WORKSPACE_CHAT}
             />
           ) : null}
         </div>
@@ -738,8 +744,8 @@ export default function App() {
                   expanding={design.status === "expanding"}
                   briefOpen={briefOpen}
                   onBrief={design.brief ? () => setBriefOpen((value) => !value) : undefined}
-                  panelOpen={route.name === "compose" ? chatOpen : undefined}
-                  onPanel={route.name === "compose" ? () => setChatOpen(!chatOpen) : undefined}
+                  panelOpen={WORKSPACE_CHAT && route.name === "compose" ? chatOpen : undefined}
+                  onPanel={WORKSPACE_CHAT && route.name === "compose" ? () => setChatOpen(!chatOpen) : undefined}
                   onPrototype={!design.local && aiConnected ? () => handleCardAction("use", design) : undefined}
                   frameDesign={
                     detail.appEdit && design.editUrl

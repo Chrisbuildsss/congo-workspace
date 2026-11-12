@@ -1,5 +1,5 @@
 ---
-description: "Build with real apps from the Congo Library: start from a real, working app or screen and adapt its source instead of building from scratch, with or without the local Congo workspace. Use for /congo and for requests like build me a CRM for realtors from Congo, start a new app, add a settings page like this one, redesign my dashboard, show me a few directions, or open the Congo workspace. In the workspace people select apps and screens and send them; you return running prototypes, and Use this puts one into their app. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
+description: "Product discovery and rapid prototyping with Congo: make running prototypes from real, working apps and screens in the Congo Library, keep them in Congo files, and pull the ones the user wants into a code project. Use for /congo and for requests like prototype a CRM for realtors, make this for dentists, show me a few directions for my dashboard, what could compete with this product, find me business ideas, open the Congo workspace, or pull that prototype into my project. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
 agent: build
 subtask: true
 ---

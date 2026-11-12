@@ -1,0 +1,4 @@
+interface:
+  display_name: Congo Compete
+  short_description: Research a product and prototype a competitor to it with Congo. Use for /congo-compete...
+  default_prompt: Use Congo Compete to redesign, critique, audit, or polish this frontend.

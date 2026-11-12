@@ -1,44 +1,57 @@
 ---
 name: congo
-description: "Build with real apps from the Congo Library: start from a real, working app or screen and adapt its source instead of building from scratch, with or without the local Congo workspace. Use for /congo and for requests like build me a CRM for realtors from Congo, start a new app, add a settings page like this one, redesign my dashboard, show me a few directions, or open the Congo workspace. In the workspace people select apps and screens and send them; you return running prototypes, and Use this puts one into their app. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
+description: "Product discovery and rapid prototyping with Congo: make running prototypes from real, working apps and screens in the Congo Library, keep them in Congo files, and pull the ones the user wants into a code project. Use for /congo and for requests like prototype a CRM for realtors, make this for dentists, show me a few directions for my dashboard, what could compete with this product, find me business ideas, open the Congo workspace, or pull that prototype into my project. Ordinary selected-element edits, critique, polish and the other Impeccable commands stay with the impeccable skill."
 version: 4.8.0
 user-invocable: true
-argument-hint: "[what to build, or open the workspace]"
+argument-hint: "[what to prototype, or open the workspace]"
 license: Apache-2.0
 ---
 
-Congo gives you real apps to build from: full editable app templates and their screens, with working source, from the Congo Library ([buildwithcongo.com](https://buildwithcongo.com)). Starting from the closest real app and adapting it is faster than writing from scratch, and the result looks like a real product. You are the only AI. This chat stays the conversation.
+Congo is a workspace for product discovery and rapid prototyping. Its Library holds real, working apps and their screens with source ([buildwithcongo.com](https://buildwithcongo.com)). A prototype that starts from a real app looks like a real product and can be clicked through in minutes. You are the only AI. This chat stays the conversation.
 
-`.grok/skills/congo/scripts` below is this skill's `scripts` folder: resolve it from the directory that contains this SKILL.md (the base directory the runtime reports for the skill), and use the written path only when none is reported. Keep the working directory at the user's project, or at the folder they work in when there is no project yet.
+`.grok/skills/congo/scripts` below is this skill's `scripts` folder: resolve it from the directory that contains this SKILL.md (the base directory the runtime reports for the skill), and use the written path only when none is reported. `WS` below means `node .grok/skills/congo/scripts/workspace.mjs`.
 
 ## How to work
 
-- **Do what the user asked.** There is no fixed routine: no rounds of options, interviews or decision pages before you build.
-- **One result by default.** Make several side by side only when the user asks for them ("show me a few directions", a redesign where they want to choose).
-- **Whole app or screens is your call,** from what the user selected and said. A new product usually starts from the closest whole app; a new page in an existing app starts from the closest screen. When nothing is selected, search the Library and choose from what it holds today.
-- **Adapt before building.** Change the real source's names, content, sample data, labels, routes and wiring for the user's product. Write new pieces only where the Library has nothing close, and build them from the app's own components and styles.
-- **Ask only when it matters.** If the product or the target app is genuinely unclear, ask one short question here. Otherwise make reasonable choices and say what you chose.
-- **Keep it quick.** Install and build once, open the main routes to check them, and run deeper reviews (critique, polish, audit) only when asked.
+- **Do what the user asked.** There is no fixed routine and there are no built-in ways in: ideas, research, a competitor, a redesign, a prototype from things they selected are all just requests. No rounds of options, interviews or decision pages before you make something.
+- **One prototype by default.** Several side by side only when the user asks ("a few directions", "three ideas").
+- **Main screen first.** Adapt the main screen or the main workflow, build the preview and show it. The rest of the app stays as the original until the user asks to Expand it. Say in one line what is adapted and what is still the source app's.
+- **Whole app or screens is your call,** from what the user selected and said. With nothing selected, search the Library and choose from what it holds today.
+- **Adapt before building.** Change the real source's names, content, sample data, labels and wiring for the user's product. Write new pieces only where the Library has nothing close, from the app's own components and styles.
+- **Prototypes go into Congo files,** never straight into a code project. Only **Pull into a project** changes the user's code.
+- **Ask only when it matters.** Otherwise make a sensible choice and say what you chose.
 
-The Congo CLI commands, sign-in and subscription rules, and how to adapt installed source are in Impeccable's `reference/congo.md`. Library source comes only through Congo's CLI or MCP under the user's own sign-in; never ask for or handle their credentials.
+The Congo CLI commands, sign-in and subscription rules are in Impeccable's `reference/congo.md`. Library source comes only through Congo's CLI or MCP under the user's own sign-in; never ask for or handle their credentials. Never name specific Congo apps from memory: choose from what `congo templates --json` and `congo search` return today.
 
-## Without the workspace
+## Congo files
 
-A clear request in this chat ("build me a CRM for realtors from Congo", "add a billing page like Congo's to my app") needs no workspace:
+Prototypes are kept in Congo files: folders ending in `.congo` in the user's `Documents/Congo` (for example `Realtor ideas.congo`). Each prototype is a folder inside one, with `prototype.json`, its running `preview/`, its working `source/` and `history.jsonl`. They are plain folders: safe to back up or move, and you can read and change them directly.
 
-1. Find the closest app or screens: `congo templates --json`, `congo search --kind screen --query "<words>" --json`.
-2. **A new app:** `congo create <template-id> --project <new folder>` (the folder the user named, or a new folder named after the product in the current folder). **An existing app:** add the screens to it with `congo add` as `congo.md` describes.
-3. Adapt it, install its dependencies, build once and open the main routes.
-4. Offer to show it running in the workspace's My app: `node .grok/skills/congo/scripts/workspace.mjs connect --project <folder> --view live --browser`.
+- `WS files --json` lists every Congo file and its prototypes, with their folders.
+- `WS new --title "<name>" [--file <path to a .congo folder>] --json` makes a new prototype folder (in a new Congo file unless you name one) and prints its paths.
+- `WS prepare <template-id> --into <prototype folder> --json` puts a Congo app's source into `source/`. The first use of an app downloads and installs it with the user's Congo CLI; after that the installed copy is reused, so this takes seconds.
+- `WS preview <prototype folder> --status main|ready --json` builds `source/` into `preview/` and records the status: `main` when the main screen is adapted, `ready` when the whole prototype is.
 
-## With the workspace
+[reference/workspace.md](reference/workspace.md) has the prototype format, briefs, Expand and Pull into a project.
 
-When the user wants to browse and pick, asks for the workspace, or sends from it:
+## Making a prototype
 
-1. Connect and open the workspace (it opens on the Library). Pass `--project` when the user has an app:
+1. Find the closest app or screens (`congo templates --json`, `congo search --kind screen --query "<words>" --json`), unless the user selected them.
+2. `WS new`, then `WS prepare <template-id> --into <prototype folder>`.
+3. Adapt the main screen or workflow in `source/` to the user's product.
+4. `WS preview <prototype folder> --status main`, write the title and a one-sentence summary into `prototype.json`, and for a product idea a `brief` (see the reference).
+5. Tell the user it is in Prototypes, and offer to open the workspace: `WS open --view prototypes`.
+
+This works with the workspace closed: the prototype is in its Congo file and shows up when the workspace next opens.
+
+## With the workspace open
+
+When the user wants to explore and pick, asks for the workspace, or sends from it:
+
+1. Connect (it opens on Explore). Pass `--project` when the user has a project they may pull prototypes into:
 
    ```sh
-   node .grok/skills/congo/scripts/workspace.mjs connect [--project <app folder>] --browser
+   WS connect [--project <project folder>] --browser
    ```
 
    Show the user the `url` it prints. It starts Impeccable's live helper on the workspace's working area and prints that `area` and the poll launcher (with `--json`: `poll.launcher`, and `poll.windowsLauncher` for a Windows shell without `sh`).
@@ -50,8 +63,6 @@ When the user wants to browse and pick, asks for the workspace, or sends from it
 
 3. Everything the user does in the workspace arrives at your poll as `Congo workspace request <id> (<type>)`. Handle each with [reference/workspace.md](reference/workspace.md), then poll again.
 
-What you make for the workspace lands in **Prototypes** as running code, in the workspace's working area. Only **Use this** (a `build` request) and edits the user accepts in My app change their project.
+A request made here in chat while the workspace is open ("show me a few directions for my dashboard") goes in with `WS request --text "<the user's words>"`, so its card appears at once, and comes back to your poll like any other.
 
-A request made here in chat that should become a prototype ("show me a few directions for my dashboard" while the workspace is open) goes in with `node .grok/skills/congo/scripts/workspace.mjs request --text "<the user's words>" [--project <app folder>]` and comes back to your poll like any other.
-
-`node .grok/skills/congo/scripts/workspace.mjs status` reports the workspace; `stop` closes it.
+`WS status` reports the workspace; `WS stop` closes it.

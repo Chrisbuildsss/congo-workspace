@@ -1,0 +1,150 @@
+// Prepared app copies and preview builds: the slow, mechanical steps of a
+// prototype, done once and reused, so the AI spends its time adapting.
+//
+//   <workspace home>/apps/<template id>/   one `congo create --install` per app,
+//                                          reused by every prototype built on it
+//   <prototype>/source/                    a copy of it (no node_modules), whose
+//                                          node_modules links to the prepared copy
+//   <prototype>/preview/                   the built, running preview
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { runCongo } from './congo-cli.mjs';
+import { appendHistory, removeTree, updatePrototype } from './files.mjs';
+import { readJson } from './store.mjs';
+
+const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
+const SKIP = new Set(['node_modules', '.git', 'dist', '.impeccable', '.vite']);
+
+export function appsDir(root) {
+  return path.join(root, 'apps');
+}
+
+function receiptVersion(dir) {
+  try {
+    const receipts = fs.readdirSync(path.join(dir, '.congo')).filter((n) => n.endsWith('.json'));
+    for (const name of receipts) {
+      const receipt = readJson(path.join(dir, '.congo', name), null);
+      if (receipt?.kind === 'template' || receipts.length === 1) return { id: receipt?.id ?? null, version: receipt?.version ?? null };
+    }
+  } catch {}
+  return { id: null, version: null };
+}
+
+function isReady(dir) {
+  return fs.existsSync(path.join(dir, 'package.json')) && fs.existsSync(path.join(dir, 'node_modules'));
+}
+
+function npm(args, cwd) {
+  const result = spawnSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', args, { cwd, encoding: 'utf8', windowsHide: true, shell: process.platform === 'win32', timeout: 15 * 60_000 });
+  return { code: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}` };
+}
+
+/**
+ * A ready copy of a Congo app: created and installed once with the person's
+ * own Congo CLI (their sign-in and subscription apply), then reused.
+ */
+export async function prepareApp({ root, templateId, refresh = false, env = process.env, run = runCongo }) {
+  if (!TEMPLATE_ID.test(String(templateId))) throw new Error('Use a Congo template id, like the `id` from `congo templates --json`');
+  const dir = path.join(appsDir(root), templateId);
+  if (!refresh && isReady(dir)) return { dir, fresh: false, ...receiptVersion(dir) };
+  if (fs.existsSync(dir)) removeTree(dir);
+  fs.mkdirSync(appsDir(root), { recursive: true });
+  const created = await run(['create', templateId, '--project', dir, '--install'], { env, timeoutMs: 15 * 60_000 });
+  if (created.code !== 0) {
+    const reason = `${created.stderr ?? ''}\n${created.stdout ?? ''}`.split(/\r?\n/).map((l) => l.trim()).find(Boolean);
+    if (fs.existsSync(dir)) removeTree(dir);
+    throw new Error(reason || created.error?.message || 'congo create failed');
+  }
+  if (!fs.existsSync(path.join(dir, 'node_modules'))) {
+    const install = npm(fs.existsSync(path.join(dir, 'package-lock.json')) ? ['ci', '--ignore-scripts', '--no-audit', '--no-fund'] : ['install', '--ignore-scripts', '--no-audit', '--no-fund'], dir);
+    if (install.code !== 0) throw new Error(`Installing ${templateId}'s dependencies failed: ${install.output.trim().split(/\r?\n/).pop()}`);
+  }
+  return { dir, fresh: true, ...receiptVersion(dir) };
+}
+
+function copyTree(from, to) {
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    if (SKIP.has(entry.name)) continue;
+    const a = path.join(from, entry.name);
+    const b = path.join(to, entry.name);
+    if (entry.isDirectory()) copyTree(a, b);
+    else if (entry.isFile()) fs.copyFileSync(a, b);
+  }
+}
+
+function git(args, cwd) {
+  return spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true, env: { ...process.env, GIT_DIR: path.join(cwd, '.git'), GIT_WORK_TREE: cwd } });
+}
+
+/** Links a source's node_modules to the prepared copy's (a junction on Windows). */
+export function linkModules(source, prepared) {
+  const link = path.join(source, 'node_modules');
+  try {
+    const stat = fs.lstatSync(link);
+    if (stat.isSymbolicLink()) fs.unlinkSync(link);
+    else return false;
+  } catch {}
+  fs.symlinkSync(path.join(prepared, 'node_modules'), link, process.platform === 'win32' ? 'junction' : 'dir');
+  return true;
+}
+
+/**
+ * Puts a prepared app's source into a prototype: copied without its
+ * dependencies, node_modules linked to the prepared copy, and committed once
+ * ("congo source") so Pull into a project can carry over just the changes.
+ */
+export async function prepareSource({ root, templateId, prototypeDir, refresh = false, env = process.env, run = runCongo }) {
+  const started = Date.now();
+  const app = await prepareApp({ root, templateId, refresh, env, run });
+  const source = path.join(prototypeDir, 'source');
+  if (fs.existsSync(source)) removeTree(source);
+  copyTree(app.dir, source);
+  linkModules(source, app.dir);
+  fs.appendFileSync(path.join(source, '.gitignore'), '\nnode_modules\n');
+  git(['init', '-q'], source);
+  git(['add', '-A'], source);
+  git(['-c', 'user.name=Congo', '-c', 'user.email=workspace@congo.local', 'commit', '-q', '-m', 'congo source'], source);
+  const meta = updatePrototype(prototypeDir, { sourceDir: 'source', root: true, base: { kind: 'template', id: app.id ?? templateId, version: app.version ?? null } });
+  appendHistory(prototypeDir, { type: 'source', template: templateId, version: app.version ?? null, reused: !app.fresh });
+  return { source, prepared: app.dir, reused: !app.fresh, version: app.version ?? null, seconds: Math.round((Date.now() - started) / 100) / 10, title: meta.title };
+}
+
+/**
+ * Builds a prototype's running preview from its source into preview/, and
+ * records its status (`main` after the main screen, `ready` after Expand).
+ */
+export function buildPreview({ prototypeDir, status }) {
+  const started = Date.now();
+  const meta = readJson(path.join(prototypeDir, 'prototype.json'), {}) ?? {};
+  const source = meta.sourceDir ? path.resolve(prototypeDir, meta.sourceDir) : path.join(prototypeDir, 'source');
+  if (!fs.existsSync(path.join(source, 'package.json'))) throw new Error(`No source to build at ${source}`);
+  const out = path.join(prototypeDir, '.preview-build');
+  if (fs.existsSync(out)) removeTree(out);
+  const bin = path.join(source, 'node_modules', '.bin', process.platform === 'win32' ? 'vite.cmd' : 'vite');
+  let result;
+  if (fs.existsSync(bin)) {
+    result = spawnSync(bin, ['build', '--outDir', out, '--emptyOutDir', '--base', '/', '--logLevel', 'warn'], { cwd: source, encoding: 'utf8', windowsHide: true, shell: process.platform === 'win32', timeout: 10 * 60_000 });
+  } else {
+    result = npm(['run', 'build'], source);
+    if (result.code === 0 && fs.existsSync(path.join(source, 'dist'))) fs.cpSync(path.join(source, 'dist'), out, { recursive: true });
+    result = { status: result.code, stdout: result.output, stderr: '' };
+  }
+  if (result.status !== 0 || !fs.existsSync(path.join(out, 'index.html'))) {
+    const detail = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim().split(/\r?\n/).slice(-6).join('\n');
+    throw new Error(`The preview build failed:\n${detail}`);
+  }
+  // The source may carry Impeccable's injected editor script after an edit;
+  // the kept preview never does.
+  const page = path.join(out, 'index.html');
+  fs.writeFileSync(page, fs.readFileSync(page, 'utf8').replace(/<!-- impeccable-live-start -->[\s\S]*?<!-- impeccable-live-end -->\s*/g, ''));
+  const preview = path.join(prototypeDir, 'preview');
+  if (fs.existsSync(preview)) removeTree(preview);
+  fs.renameSync(out, preview);
+  const fields = { root: true, sourceDir: meta.sourceDir ?? 'source', builtAt: new Date().toISOString() };
+  if (status) fields.status = status;
+  updatePrototype(prototypeDir, fields);
+  appendHistory(prototypeDir, { type: 'preview', status: status ?? meta.status ?? null });
+  return { preview, seconds: Math.round((Date.now() - started) / 100) / 10 };
+}

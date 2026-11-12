@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 // Congo workspace launcher. Opens (or reuses) the local workspace server.
-//   node workspace.mjs open [--project PATH] [--view library|prototypes|live] [--no-browser] [--json]
-//   node workspace.mjs connect [--project PATH] [--view library|prototypes|live] [--browser] [--json]   (for the user's AI)
+//   node workspace.mjs open [--project PATH] [--view explore|prototypes] [--no-browser] [--json]
+//   node workspace.mjs connect [--project PATH] [--view explore|prototypes] [--browser] [--json]   (for the user's AI)
 //   node workspace.mjs request --text "..." [--project PATH] [--browser] [--json]  (a request from the AI's chat; its prototype lands in Prototypes)
+//   node workspace.mjs new --title "..." [--file <path.congo>] [--json]   (a prototype folder in a Congo file)
+//   node workspace.mjs prepare <template-id> --into <prototype folder> [--refresh] [--json]
+//   node workspace.mjs preview <prototype folder> [--status main|ready] [--json]
+//   node workspace.mjs files [--json]                                     (Congo files and their prototypes)
 //   node workspace.mjs status [--json]
 //   node workspace.mjs stop
 //   node workspace.mjs serve [--port N]      (foreground; `open` starts this detached)
@@ -11,8 +15,11 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
 import { dataDir, layout } from './workspace/server/paths.mjs';
 import { readJson, writeJsonAtomic } from './workspace/server/store.mjs';
+import { createCongoFile, createStub, filesRoot, listCongoFiles, previewDir } from './workspace/server/files.mjs';
+import { buildPreview, prepareSource } from './workspace/server/prepare.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const entry = fileURLToPath(import.meta.url);
@@ -95,11 +102,14 @@ function openBrowser(url) {
 }
 
 // Prototypes is the old Compose view: `compose` still names it in the API.
+// Explore is the former Library: `library` still names it in the API.
 function viewPath(view) {
-  return view === 'compose' || view === 'prototypes' ? 'prototypes' : view;
+  if (view === 'compose' || view === 'prototypes') return 'prototypes';
+  return view === 'library' || view === 'explore' ? 'explore' : view;
 }
 function viewName(view) {
-  return view === 'prototypes' ? 'compose' : view;
+  if (view === 'prototypes') return 'compose';
+  return view === 'explore' ? 'library' : view;
 }
 
 function print(args, value, human) {
@@ -143,7 +153,7 @@ async function main() {
     const record = await ensure(files, Number(args.port) || 0);
     const connected = await request(record, '/api/connect', typeof args.project === 'string' ? { project: args.project } : {});
     // The Library to browse and send from; with --project, My app shows that app.
-    const view = typeof args.view === 'string' ? viewPath(args.view) : 'library';
+    const view = typeof args.view === 'string' ? viewPath(args.view) : 'explore';
     const url = `http://127.0.0.1:${record.port}/${view}#t=${record.token}`;
     if (args.browser === true || args['open-browser']) openBrowser(url);
     return print(args, { url, ...connected, next: `From ${connected.area}, run ${connected.poll?.launcher ?? "Impeccable's launcher"} live-poll and keep polling.` },
@@ -167,8 +177,50 @@ async function main() {
       `Sent to Prototypes: ${url}\nRequest ${sent.request.id} will reach your live-poll as a steer.`);
   }
 
+  // Congo files work without the workspace running: they are just folders.
+  if (command === 'files') {
+    const root = filesRoot();
+    const list = listCongoFiles(root).map((file) => ({
+      file: file.dir,
+      title: file.title,
+      prototypes: file.prototypes.map((p) => ({ id: p.id, title: p.meta.title, status: p.meta.status ?? 'ready', dir: p.dir, preview: previewDir(p.dir), brief: Boolean(p.brief) })),
+    }));
+    return print(args, { root, files: list }, list.length
+      ? list.map((f) => `${f.title}  (${f.file})\n${f.prototypes.map((p) => `  ${p.id}  ${p.title}  [${p.status}]`).join('\n')}`).join('\n')
+      : `No Congo files yet in ${root}`);
+  }
+
+  if (command === 'new') {
+    // A new prototype folder (with an "adapting" placeholder) in a Congo file.
+    const title = typeof args.title === 'string' ? args.title.trim() : '';
+    if (!title) throw new Error('Name it with --title "..."');
+    const file = typeof args.file === 'string' ? path.resolve(args.file) : createCongoFile(filesRoot(), title);
+    if (!fs.existsSync(file)) throw new Error(`No Congo file at ${file}`);
+    const id = `${crypto.randomBytes(4).toString('hex')}-1`;
+    const dir = path.join(file, id);
+    createStub(dir, { title, request: null });
+    return print(args, { file, id, prototype: dir, preview: path.join(dir, 'preview'), source: path.join(dir, 'source') },
+      `Congo file: ${file}\nPrototype: ${dir}`);
+  }
+
+  if (command === 'prepare') {
+    const templateId = args._[1];
+    const into = typeof args.into === 'string' ? path.resolve(args.into) : '';
+    if (!templateId || !into) throw new Error('Use: prepare <template-id> --into <prototype folder>');
+    const result = await prepareSource({ root: files.root, templateId, prototypeDir: into, refresh: args.refresh === true });
+    return print(args, result, `${result.reused ? 'Reused' : 'Prepared'} ${templateId} in ${result.seconds}s. Source: ${result.source}`);
+  }
+
+  if (command === 'preview') {
+    const dir = args._[1] ? path.resolve(args._[1]) : '';
+    if (!dir) throw new Error('Use: preview <prototype folder> [--status main|ready]');
+    const status = typeof args.status === 'string' && ['main', 'ready'].includes(args.status) ? args.status : undefined;
+    const result = buildPreview({ prototypeDir: dir, status });
+    return print(args, result, `Preview built in ${result.seconds}s: ${result.preview}`);
+  }
+
   if (command !== 'open') {
-    console.error(`Unknown command: ${command}. Use open, connect, request, status, stop or serve.`);
+    console.error(`Unknown command: ${command}. Use open, connect, request, new, prepare, preview, files, status, stop or serve.`);
     process.exitCode = 2;
     return;
   }

@@ -15,6 +15,7 @@ import { buildRequest, describeAction, isBundleOnly, newId, normalizeTray, scanD
 import { DevServers, normalizeUrl } from './devserver.mjs';
 import { runImpeccable } from './impeccable.mjs';
 import { savedItems } from './congo-cli.mjs';
+import { appendHistory, createCongoFile, createStub, filesRoot, listCongoFiles, previewDir, removeTree, sourceDirOf as prototypeSource, updatePrototype } from './files.mjs';
 
 export const PROTOCOL = 1;
 export const VERSION = '0.1.0';
@@ -177,7 +178,7 @@ function appName(appPath) {
   return path.basename(appPath);
 }
 
-export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl, runCongo, bootHelper = !env.CONGO_WORKSPACE_NO_HELPER }) {
+export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPort, token, log = () => {}, env = process.env, fetchImpl, runCongo, filesDir, bootHelper = !env.CONGO_WORKSPACE_NO_HELPER }) {
   const files = layout(root);
   for (const dir of [files.area, files.designs, files.requests, files.sources]) fs.mkdirSync(dir, { recursive: true });
   const store = new Store(files.state);
@@ -197,6 +198,13 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     return !origin || origin === `http://127.0.0.1:${p}` || origin === `http://localhost:${p}`;
   };
 
+  // Congo files: where prototypes are kept (Documents\Congo unless overridden).
+  const congoRoot = filesDir ? path.resolve(filesDir) : filesRoot(env);
+  const designDir = (design) => design?.dir ?? path.join(files.designs, design.id);
+  const inCongoFiles = (dir) => {
+    const relative = path.relative(congoRoot, dir);
+    return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+  };
   const activeApp = () => store.get().apps.find((app) => app.id === store.get().activeAppId) || null;
   // The project the AI may be live-editing besides the working area: a
   // prototype's source while the person edits that prototype, else My app.
@@ -211,6 +219,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   };
   const launcher = findLauncher(env);
   const protocolFile = path.resolve(uiDir, '..', '..', '..', 'reference', 'workspace.md');
+  const launcherScript = path.resolve(uiDir, '..', '..', 'workspace.mjs');
   const impeccableReference = referenceDir(launcher);
   prepareArea(files.area);
 
@@ -276,6 +285,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       projects: s.projects,
       requests,
       tray: s.tray,
+      filesRoot: congoRoot,
     };
   }
 
@@ -333,7 +343,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
 
   async function createRequest(body) {
     const type = body.type;
-    if (!['send', 'compose', 'tweak', 'build', 'library', 'start-app', 'live-edit', 'rebuild', 'switch-to-area'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
+    if (!['send', 'compose', 'tweak', 'expand', 'build', 'library', 'start-app', 'live-edit', 'rebuild', 'switch-to-area'].includes(type)) throw Object.assign(new Error('Unknown request'), { status: 400 });
     const standalone = ['start-app', 'live-edit', 'rebuild', 'switch-to-area'].includes(type);
     const id = newId();
     const s = store.get();
@@ -351,7 +361,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       ({ items } = normalizeTray({ items: body.items }));
       text = String(body.note ?? body.text ?? '').trim().slice(0, 4000) || null;
       if (!items.length && !text && !body.attachment) {
-        throw Object.assign(new Error('Select something in the Library or describe what you want'), { status: 400 });
+        throw Object.assign(new Error('Select something in Explore or describe what you want'), { status: 400 });
       }
       if (body.appId != null && !s.apps.some((a) => a.id === body.appId)) {
         throw Object.assign(new Error('That app is no longer attached'), { status: 404 });
@@ -370,15 +380,23 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       text = String(body.text ?? '').trim().slice(0, 4000);
       if (!text && !body.attachment) throw Object.assign(new Error('Describe what you want first'), { status: 400 });
       userText = text || 'Use the attached image';
-    } else if (type === 'tweak' || type === 'build') {
+    } else if (type === 'tweak' || type === 'build' || type === 'expand') {
       design = s.designs[body.designId];
-      if (!design || !design.local) throw Object.assign(new Error('Design not found in this workspace'), { status: 404 });
+      if (!design || !design.local) throw Object.assign(new Error('Prototype not found in this workspace'), { status: 404 });
       if (type === 'tweak') {
         action = describeAction(String(body.action ?? ''));
         if (!action) throw Object.assign(new Error('Unknown action'), { status: 400 });
         userText = `${action.label}: ${design.title}`;
+      } else if (type === 'expand') {
+        if (!design.sourceDir) throw Object.assign(new Error('This prototype is a single page; there is nothing more to build out'), { status: 409 });
+        userText = `Expand: ${design.title}`;
       } else {
-        userText = `Use this: ${design.title}`;
+        // Pull into a project: the app named here, or a new one when null.
+        if (body.appId != null && !s.apps.some((a) => a.id === body.appId)) {
+          throw Object.assign(new Error('That project is no longer attached'), { status: 404 });
+        }
+        const into = s.apps.find((a) => a.id === body.appId);
+        userText = `Pull into ${into ? into.name : 'a new project'}: ${design.title}`;
       }
       compose = s.composes.find((c) => c.id === body.composeId) ?? composeOf(s, design.id);
     } else if (type === 'library') {
@@ -421,7 +439,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         const app = design ? null : state.apps.find((a) => a.id === body.appId) ?? null;
         const request = buildRequest({
           type, id, files, reference: protocolFile, impeccableReference, app,
-          design: design ? { ...design, dir: path.join(files.designs, design.id), entry: path.join(files.designs, design.id, 'index.html') } : null,
+          design: design ? { ...design, dir: designDir(design), entry: path.join(previewDir(designDir(design)), 'index.html') } : null,
         });
         state.requests[id] = {
           id, type, status: 'sent', composeId: null, designId: design?.id ?? null, action: null, item: null,
@@ -435,22 +453,38 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       // Send takes what the tray held; the tray starts empty again.
       if (type === 'send' && body.fromTray) state.tray = { items: [], note: '' };
       if (type === 'compose' && (target.title === 'New design' || !target.title)) target.title = text.split(/[.!?\n]/)[0].slice(0, 60) || 'New design';
-      if (body.appId === null || state.apps.some((a) => a.id === body.appId)) target.appId = body.appId;
+      if (type !== 'build' && type !== 'expand' && (body.appId === null || state.apps.some((a) => a.id === body.appId))) target.appId = body.appId;
       target.messages.push({ id: `m-${id}`, role: 'user', text: userText, at: new Date().toISOString(), requestId: id });
       if (type === 'compose') target.prompt = text;
       target.status = 'waiting';
-      const app = state.apps.find((a) => a.id === target.appId) ?? null;
+      // Pull into a project names its own destination; everything else is for the thread's app.
+      const app = type === 'build'
+        ? state.apps.find((a) => a.id === body.appId) ?? null
+        : state.apps.find((a) => a.id === target.appId) ?? null;
+      // New prototypes go into a Congo file: the original's for a quick action,
+      // else this request thread's (created on its first request).
+      let outDir = null;
+      if (['send', 'compose', 'library', 'tweak'].includes(type)) {
+        if (type === 'tweak' && design?.dir && inCongoFiles(design.dir)) outDir = path.dirname(design.dir);
+        else {
+          if (!target.fileDir || !fs.existsSync(target.fileDir)) target.fileDir = createCongoFile(congoRoot, target.title);
+          outDir = target.fileDir;
+        }
+      }
       const request = buildRequest({
         type,
         id,
         files,
+        outDir,
+        filesRoot: congoRoot,
+        helper: launcherScript,
         reference: protocolFile,
         impeccableReference,
         app,
         compose: target,
         text,
         attachment,
-        design: design ? { ...design, dir: design.local ? path.join(files.designs, design.id) : null, entry: design.local ? path.join(files.designs, design.id, 'index.html') : null } : null,
+        design: design ? { ...design, dir: design.local ? designDir(design) : null, entry: design.local ? path.join(previewDir(designDir(design)), 'index.html') : null } : null,
         action,
         item,
         items,
@@ -470,6 +504,21 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       };
       return { request, compose: target };
     });
+    // The card appears right away: a placeholder in the Congo file, "adapting".
+    for (const output of result.request.outputs) {
+      createStub(output.dir, {
+        title: type === 'tweak' ? `${design.title} · ${action.label}` : (item?.title ?? text ?? userText).split(/[.!?\n]/)[0].slice(0, 80) || 'New prototype',
+        request: id,
+        kind: type === 'tweak' && action?.key && ['critique', 'audit'].includes(action.command ?? '') ? 'review' : 'prototype',
+        parent: design?.id ?? null,
+      });
+    }
+    if (type === 'expand' && design?.dir) {
+      updatePrototype(design.dir, { status: 'expanding' });
+      appendHistory(design.dir, { type: 'expand-requested', request: id });
+    }
+    if (type === 'build' && design?.dir) appendHistory(design.dir, { type: 'pull-requested', request: id, into: result.request.app?.path ?? 'a new project' });
+    await registerDesigns().catch(() => {});
     const file = writeRequest(files, result.request);
     try {
       await postSteer(info, { id, message: steerMessage(result.request, file) });
@@ -517,6 +566,24 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     live.lastPollAt = Date.now();
     // "Ask my AI to start it" / live editing: the reply carries the app's URL.
     const done = store.get().requests[event.id];
+    // Settle prototype placeholders: a failed request must not adapt forever,
+    // and an Expand that failed goes back to its main-screen state.
+    for (const outputId of done.outputs ?? []) {
+      const output = store.get().designs[outputId];
+      if (output?.dir && ['adapting'].includes(output.status)) {
+        if (done.status === 'error') updatePrototype(output.dir, { status: 'error', error: done.message ?? 'Your AI could not finish this' });
+        else if (fs.existsSync(path.join(previewDir(output.dir), 'index.html'))) updatePrototype(output.dir, { status: 'ready' });
+        else updatePrototype(output.dir, { status: 'error', error: 'Your AI replied without a preview' });
+      }
+    }
+    if (done.type === 'expand' && done.designId) {
+      const target = store.get().designs[done.designId];
+      if (target?.dir && target.status === 'expanding') updatePrototype(target.dir, { status: done.status === 'error' ? 'main' : 'ready' });
+    }
+    if (done.designId && store.get().designs[done.designId]?.dir) {
+      appendHistory(store.get().designs[done.designId].dir, { type: `${done.type}-${done.status}`, request: done.id, message: done.message ?? null });
+    }
+    registerDesigns().catch(() => {});
     if (done.type === 'rebuild' && done.designId) {
       // Rebuilt: the AI is back on the working area; stop following the source.
       store.update((state) => { if (state.editTarget === done.designId) state.editTarget = null; });
@@ -550,7 +617,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         const entry = rootServers.get(designId);
         if (!entry || !hostAllowed(req, entry.port)) return send(res, 403, 'Forbidden', { 'Content-Type': 'text/plain' });
         if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed', { 'Content-Type': 'text/plain' });
-        const base = path.join(files.designs, designId);
+        const design = store.get().designs[designId];
+        const base = design ? previewDir(designDir(design)) : path.join(files.designs, designId);
         const url = new URL(req.url, `http://127.0.0.1:${entry.port}`);
         let file = fileInside(base, url.pathname);
         if (file && fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
@@ -591,13 +659,33 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     entry.server.closeAllConnections?.();
   }
 
-  function sourceDirOf(meta) {
+  function sourceDirOf(meta, dir) {
+    if (dir) return prototypeSource(dir, meta);
     if (typeof meta.sourceDir !== 'string' || !path.isAbsolute(meta.sourceDir)) return undefined;
     try {
       return fs.statSync(meta.sourceDir).isDirectory() ? path.resolve(meta.sourceDir) : undefined;
     } catch {
       return undefined;
     }
+  }
+
+  /** Prototypes in Congo files, in the shape the older working-area scan returns. */
+  function scanCongoFiles() {
+    const found = [];
+    for (const file of listCongoFiles(congoRoot)) {
+      for (const p of file.prototypes) {
+        const preview = previewDir(p.dir);
+        const hasPreview = fs.existsSync(path.join(preview, 'index.html'));
+        const loopback = typeof p.meta.url === 'string' && /^http:\/\/(127\.0\.0\.1|localhost):\d+(\/|$)/.test(p.meta.url);
+        const status = ['adapting', 'main', 'expanding', 'ready', 'error'].includes(p.meta.status) ? p.meta.status : hasPreview || loopback ? 'ready' : 'adapting';
+        found.push({
+          id: p.id, dir: p.dir, meta: p.meta, congo: true, file: file.dir, fileTitle: file.title, brief: p.brief,
+          hasPreview, status: hasPreview || loopback || status === 'error' ? status : 'adapting',
+          src: hasPreview ? `/designs/${p.id}/` : loopback ? p.meta.url : undefined,
+        });
+      }
+    }
+    return found;
   }
 
   let scanning = false;
@@ -612,20 +700,35 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
   }
 
   async function scanOnce() {
-    const found = scanDesigns(files);
+    const congo = scanCongoFiles();
+    const congoIds = new Set(congo.map((d) => d.id));
+    const found = [...congo, ...scanDesigns(files).filter((d) => !congoIds.has(d.id))];
     for (const d of found) {
-      if (d.meta.root === true && fs.existsSync(path.join(d.dir, 'index.html'))) {
-        d.src = `http://127.0.0.1:${await ensureRootServer(d.id)}/`;
-      }
+      const whole = d.meta.root === true || (d.congo && Boolean(sourceDirOf(d.meta, d.dir)));
+      const hasIndex = d.congo ? d.hasPreview : fs.existsSync(path.join(d.dir, 'index.html'));
+      d.root = whole && hasIndex;
+      if (d.root) d.src = `http://127.0.0.1:${await ensureRootServer(d.id)}/`;
+      d.source = sourceDirOf(d.meta, d.congo ? d.dir : null);
+      d.built = typeof d.meta.builtAt === 'string' ? d.meta.builtAt : undefined;
     }
     const s = store.get();
+    const foundIds = new Set(found.map((d) => d.id));
+    // A Congo file that was moved, renamed or deleted takes its cards with it.
+    const gone = Object.values(s.designs).filter((d) => d.local && d.dir && !foundIds.has(d.id));
     const fresh = found.filter((d) => {
       const known = s.designs[d.id];
       return !known || known.title !== d.meta.title || known.summary !== (d.meta.summary ?? undefined) || known.src !== d.src
-        || known.sourceDir !== sourceDirOf(d.meta) || Boolean(known.root) !== (d.meta.root === true);
+        || known.sourceDir !== d.source || Boolean(known.root) !== d.root || known.status !== (d.status ?? undefined)
+        || known.dir !== (d.congo ? d.dir : undefined) || known.builtAt !== d.built
+        || JSON.stringify(known.brief ?? null) !== JSON.stringify(d.brief ?? null) || known.error !== (d.meta.error ?? undefined);
     });
-    if (!fresh.length) return;
+    if (!fresh.length && !gone.length) return;
+    for (const d of gone) closeRootServer(d.id);
     store.update((state) => {
+      for (const d of gone) {
+        delete state.designs[d.id];
+        for (const c of state.composes) c.designIds = c.designIds.filter((id) => id !== d.id);
+      }
       for (const d of fresh) {
         const requestId = typeof d.meta.request === 'string' ? d.meta.request : d.id.split('-')[0];
         const request = state.requests[requestId] ?? null;
@@ -639,8 +742,14 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
           summary: typeof d.meta.summary === 'string' ? d.meta.summary.slice(0, 400) : undefined,
           format: d.meta.format === 'mobile' ? 'mobile' : 'desktop',
           src: d.src,
-          root: d.meta.root === true || undefined,
-          sourceDir: sourceDirOf(d.meta),
+          root: d.root || undefined,
+          sourceDir: d.source,
+          dir: d.congo ? d.dir : undefined,
+          file: d.congo ? d.fileTitle : undefined,
+          status: d.status ?? undefined,
+          error: typeof d.meta.error === 'string' ? d.meta.error.slice(0, 300) : undefined,
+          brief: d.brief ?? undefined,
+          builtAt: d.built,
           requestId: request ? requestId : null,
           parentId: parent?.id ?? existing?.parentId,
           action: request?.action ?? existing?.action,
@@ -801,13 +910,17 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         return send(res, 200, publicState());
       }
       case '/api/designs/rename': {
-        // Rename a prototype: its card and its design.json, so a rescan keeps it.
+        // Rename a prototype: its card and its metadata, so a rescan keeps it.
         const design = store.get().designs[body.id];
         const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
         if (!design?.local) return send(res, 404, { error: 'Prototype not found' });
         if (!title) return send(res, 400, { error: 'Name the prototype' });
+        if (design.dir) {
+          updatePrototype(design.dir, { title });
+          appendHistory(design.dir, { type: 'renamed', title });
+        }
         const metaFile = path.join(files.designs, design.id, 'design.json');
-        const meta = readJson(metaFile, null);
+        const meta = design.dir ? null : readJson(metaFile, null);
         if (meta) writeJsonAtomic(metaFile, { ...meta, title });
         store.update((s) => { if (s.designs[design.id]) s.designs[design.id].title = title; });
         return send(res, 200, publicState());
@@ -815,7 +928,11 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       case '/api/designs/delete': {
         const design = store.get().designs[body.id];
         if (!design) return send(res, 404, { error: 'Design not found' });
-        if (design.local && /^[a-z0-9][a-z0-9-]{0,63}$/i.test(design.id)) {
+        if (design.local && design.dir && inCongoFiles(design.dir)) {
+          // In a Congo file: the prototype's own folder goes, source included.
+          closeRootServer(design.id);
+          removeTree(design.dir);
+        } else if (design.local && /^[a-z0-9][a-z0-9-]{0,63}$/i.test(design.id)) {
           closeRootServer(design.id);
           const dir = path.join(files.designs, design.id);
           if (path.dirname(dir) === files.designs) fs.rmSync(dir, { recursive: true, force: true });
@@ -892,7 +1009,7 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         }
         let page = '';
         try {
-          page = fs.readFileSync(path.join(files.designs, design.id, 'index.html'), 'utf8');
+          page = fs.readFileSync(path.join(previewDir(designDir(design)), 'index.html'), 'utf8');
         } catch {}
         if (page && isBundleOnly(page)) {
           return send(res, 200, { editable: false, reason: 'This design is a built app, so Impeccable has nothing in its page to select. Make editable asks your AI for a static copy that looks the same.' });
@@ -1010,7 +1127,13 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
       if (url.pathname === '/health') return send(res, 200, { ok: true });
       if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed', { 'Content-Type': 'text/plain' });
       if (url.pathname.startsWith('/designs/')) {
-        let file = fileInside(files.designs, url.pathname.slice('/designs'.length));
+        // /designs/<id>/...: a prototype's preview in its Congo file, or the
+        // older working-area folder.
+        const [, , rawId, ...rest] = url.pathname.split('/');
+        const known = store.get().designs[decodeURIComponent(rawId ?? '')];
+        let file = known?.dir
+          ? fileInside(previewDir(known.dir), `/${rest.join('/')}`)
+          : fileInside(files.designs, url.pathname.slice('/designs'.length));
         if (file && fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
         // Cards show the design without Impeccable's live editor; Edit (?edit=1)
         // serves the page exactly as Impeccable injected it.
@@ -1024,7 +1147,8 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         // root (/assets/logo.svg). Resolve those inside the design that asked,
         // named by the page or stylesheet that made the request.
         const design = designFromReferer(req.headers.referer, servedContentPort);
-        const file = design && fileInside(path.join(files.designs, design), url.pathname);
+        const owner = design ? store.get().designs[design] : null;
+        const file = design && fileInside(owner?.dir ? previewDir(owner.dir) : path.join(files.designs, design), url.pathname);
         if (file && path.extname(file) && serveFile(res, file, DESIGN_HEADERS)) return undefined;
       }
       return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });

@@ -1,89 +1,114 @@
-# Congo workspace requests
+# Congo workspace requests and Congo files
 
 The workspace sends the user's actions to you through Impeccable's live helper as `steer` events. You do the work with your normal tools and Impeccable's references, then reply on the same helper. There is no other AI and no second chat: questions go to the user in this conversation.
 
+`WS` means `node .vibe/skills/congo/scripts/workspace.mjs` (the request file gives the same script as `workspace.helper`).
+
 ## Connect
 
-1. `node .vibe/skills/congo/scripts/workspace.mjs connect [--project <the user's app folder>]`. It opens or reuses the workspace, starts Impeccable's live helper on the workspace's working area, and prints JSON with `area` (the working area) and `url` (show it to the user if they have not opened it).
-2. Run Impeccable's poll from `area` as the working directory with the launcher `connect` printed: `<poll launcher> live-poll` (`poll.windowsLauncher` on a Windows shell without `sh`). Follow the harness policy in Impeccable's `reference/live.md`: Claude Code runs the poll as a background task, Codex holds it in a foreground session, Cursor uses a background terminal. Never pass a short `--timeout`. Poll again right after every event and every reply.
+1. `WS connect [--project <the user's project folder>]`. It opens or reuses the workspace, starts Impeccable's live helper on the workspace's working area, and prints JSON with `area` (the working area) and `url` (show it to the user if they have not opened it).
+2. Run Impeccable's poll from `area` as the working directory with the launcher `connect` printed: `<poll launcher> live-poll` (`poll.windowsLauncher` on a Windows shell without `sh`). Follow the harness policy in Impeccable's `reference/live.md`. Never pass a short `--timeout`. Poll again right after every event and every reply.
 3. A steer whose message starts with `Congo workspace request <id>` is a workspace request: handle it below. Every other event (`generate`, `accept`, `discard`, `prefetch`, `exit`, ...) is Impeccable's live editor: handle it exactly as `live.md` says.
-
-The workspace shows the user that you are connected while your poll is parked on the helper, and shows each request as in progress until you reply.
 
 ## Every request
 
-- Read the request file named in the message (`requests/<id>.json` in the working area). It holds the type, the user's words (`request`), their app (`app.path`, or null for a new app), any Library `items` or `item`, the prototype (`design`), the `action`, and `outputs`: the folders your prototypes go in.
-- **Prototypes are made in the working area, never in the user's project.** Only `build` (Use this) changes the user's code.
-- **One prototype per request.** When the user asked for several (a redesign where they want to choose, "a few directions"), write them as `<id>-2`, `<id>-3` next to `outputs[0].dir`; the workspace shows every folder that starts with the request id.
+- Read the request file named in the message (`requests/<id>.json` in the working area). It holds the type, the user's words (`request`), the project it is for (`app.path`, or null), any Library `items` or `item`, the prototype (`design`), the `action`, and `outputs`.
+- Each output is a prototype folder in a Congo file: `outputs[i].dir`, with `preview` (where the running build goes), `source` (the working source) and `meta` (`prototype.json`). The workspace already shows a placeholder card for it.
+- **Prototypes never go into the user's project.** Only `build` (Pull into a project) changes code.
+- **One prototype per request.** When the user asked for several, make more folders beside `outputs[0].dir` named `<id>-2`, `<id>-3` in the same Congo file.
 - Reply exactly once: `impeccable live-poll --reply <id> steer_done "<one short line for the user>"`. On failure: `--reply <id> error "<short reason>"`. Then poll again.
-- Missing context (which app, which page, what to keep) is asked in this chat. Keep the request open while you wait; reply when the work is done.
+- Missing context is asked in this chat. Keep the request open while you wait.
 
-## Prototypes
+## A prototype
 
-A prototype is a folder the workspace shows as a card in Prototypes and opens at full size. Write `design.json` last: the card appears when it lands. It holds `title`, and optionally `summary` (one sentence), `format` (`desktop` or `mobile`), `root`, `sourceDir`, `source` (`kind`, `id`, `version`, `app` of the Congo item it starts from), `sources` (every Congo item used) and `notices`.
+A folder in a Congo file:
 
-**A whole app** (or anything that needs its routes): the app itself, clickable end to end.
+| File | What it is |
+| --- | --- |
+| `prototype.json` | `title`, `status`, and optionally `summary` (one sentence), `format` (`desktop` or `mobile`), `brief`, `source` (`kind`, `id`, `version`, `app` of the Congo item it starts from), `sources` (every Congo item used), `notices`. |
+| `preview/` | The running build: `index.html` and its assets. The card and the open view show this. |
+| `source/` | The working source of a whole app. Its `node_modules` is a link to a prepared copy; never copy dependencies into a Congo file. |
+| `history.jsonl` | One line per event. The helpers add to it; you may add `{"at": "<iso time>", "type": "note", "text": "..."}` lines. |
 
-1. Keep its source in the request's `workspace.sources` folder, never inside `designs/`. For a Congo app: `congo create <template-id> --project <sources>/<name>`, then right away `git init`, `git add -A` and `git commit -m "congo source"` there, so your adaptation is a diff that Use this can carry over.
-2. Adapt it, install its dependencies once, and build it with its own bundler into the source folder (for Vite: `npx vite build --outDir dist --emptyOutDir`, with the default base `/`).
-3. Copy everything in `dist` into `outputs[0].dir`, with the package's license and notice files, then write `design.json` with `"root": true` and `"sourceDir": "<absolute source folder>"`.
+`status` is `main` when the main screen or workflow is adapted and the rest is still the source app, and `ready` when the whole prototype is done. The helpers set it; set it yourself when you write a preview by hand.
 
-The workspace serves a `root` prototype at the root of its own local address, so the app's routes and root-relative assets work as in the real app. Edit runs Impeccable's live editor on the source's dev server, and Use this starts from the source. When a later request starts from the same source (a quick action on it), copy the source without `node_modules` and link the original's `node_modules` (a junction on Windows, `mklink /J`; a symlink elsewhere) unless the dependencies change.
+**Main screen first, in this order:**
 
-**One page or screen:** a static page. Write an `index.html` that holds the page's markup, with its stylesheets, fonts and images beside it and only the scripts its interactions need (menus, tabs, dialogs). Edit opens it in Impeccable's live editor, which selects and changes elements in `index.html`, so keep the markup in the file (one element per line) rather than in a script bundle. When the page comes from an app, run that page from a copy of the app, open the real route in a browser and save what it rendered: the document's markup without the module scripts, the stylesheets it loaded and the fonts and images they use. A design served at `/designs/<id>/` resolves relative URLs inside its folder, and root-relative ones (`/assets/logo.svg`) inside the design that requested them. When the user edits it, Impeccable's events carry `pageUrl` `/designs/<id>/`: its file is `designs/<id>/index.html` in the working area (pass `--file designs/<id>/index.html` to `live-wrap`).
+1. `WS prepare <template-id> --into <outputs[0].dir> --json`. It copies the app's source into `source/`, links its dependencies and commits it once as "congo source", so later changes are a clean diff. The first use of an app downloads and installs it (the user's Congo sign-in and subscription apply); later uses reuse it and take seconds.
+2. Adapt the main screen or main workflow in `source/`: the product's name, content, sample data, labels and the obvious actions. Keep the app's design and behavior. Leave the other screens as they are.
+3. `WS preview <outputs[0].dir> --status main --json`, then add `title`, `summary`, `source`, `sources` and `notices` to `prototype.json` (keep the fields already there).
+4. Reply with one line: what is adapted, and that Expand builds out the rest.
 
-The working area is private to this computer. Never copy paid Congo source anywhere public.
+**One page or screen** (no whole app needed): write a static `preview/index.html` that holds the page's markup, with its stylesheets, fonts and images beside it and only the scripts its interactions need, then set `status` to `ready`. Keep the markup in the file, one element per line, so Impeccable's editor can pick in it.
 
-## `send`: Library items with notes
+**A brief** goes on product ideas only (something the user could build a business or product on), never on design-only prototypes such as a redesign or a quick action. In `prototype.json`:
 
-The user selected apps and screens in the Library and pressed Send. `items` lists each with its catalog identity (`kind`: `template` for a whole app, or `screen`; `id`; `version`; `app`), `title`, `route` and the user's `note` for it; `request` is the note for the whole request; `app` is the app it is for (null: a new app).
+```json
+"brief": {
+  "who": "Who needs it, in a sentence or two.",
+  "why": "Why it fits this user: their work, their projects, what they asked.",
+  "supports": "What supports the opportunity: what you found, with sources named.",
+  "next": "What to look into next."
+}
+```
+
+Keep each to a few plain sentences. Say only what you checked or can see; mark guesses as guesses.
+
+Congo files are private to this computer. Never copy paid Congo source anywhere public.
+
+## `send`: Explore items with notes
+
+The user selected apps and screens in Explore and pressed Send. `items` lists each with its catalog identity (`kind`: `template` for a whole app, or `screen`; `id`; `version`; `app`), `title`, `route` and the user's `note`; `request` is the note for the whole request; `app` is the project it is meant for (null: something new).
 
 1. **Decide whole app or screens** from the items and notes:
    - a whole app selected, or a new product: start from the whole app (the selected one, else the app the selected screens come from, else the closest template);
-   - screens for the user's existing app: just those screens, matched to that app's styles;
+   - screens for the user's existing project: start from a copy of that project's page when you can read it, else from the screen's app, matched to the project's styles;
    - screens from several apps: start from the app that fits the product best and fit the others into it, in its tokens;
    - nothing selected: search the Library for the closest app or screens.
-2. **Get the source** into `workspace.sources`: a whole app with `congo create`, a screen with `congo add` (into the whole-app source when it joins one, or into a scratch project from `congo init --new`). When `congo add` refuses a screen because its pinned dependencies conflict with the app's, read it from a scratch project and rebuild it in the app's own code, keeping its notices. A screen that is not installable on its own (its search result's `next` does not start with `add`) comes with its whole app: take it from that app's source. If `congo whoami` shows the user is not signed in or not subscribed, tell them here to run `congo login` themselves or subscribe, and reply `error "Needs Congo sign-in and a subscription"`.
-3. **Adapt** it to the user's product and each item's note: names, content, sample data, navigation labels, routes and the obvious actions. Keep the app's design, behavior and required notices. For the user's existing app, match its styles.
-4. **Make one prototype** as described under Prototypes, with `source` and `sources` in `design.json`. Reply with one line saying what you built and from which items.
+2. **Get the source** with `WS prepare` for the app you start from. For a screen from another app, read it from a scratch project (`congo init --new`, then `congo add`) and rebuild it in the app's own code, keeping its notices; `congo add` into the app is fine when it accepts the screen. If `congo whoami` shows the user is not signed in or not subscribed, tell them here to run `congo login` themselves or subscribe, and reply `error "Needs Congo sign-in and a subscription"`.
+3. **Main screen first** as above: the screen the notes point at, or the app's main working screen.
 
-## `library`: one Library item
+## `library`: one Explore item
 
-Use this or a quick action on a Library card. `item` is the app or screen; `action` is set for a quick action. Handle it like `send` with that one item, then apply the action (as in `tweak`) to the adapted result.
+Prototype this, or a quick action, on an Explore card. `item` is the app or screen; `action` is set for a quick action. Handle it like `send` with that one item, then apply the action (as in `tweak`).
 
 ## `compose`: a request typed in Prototypes, or sent from your chat
 
-Make one prototype for the user's words, as running code (several only when asked).
+Make one prototype for the user's words (several only when asked). It can be anything: a new product, a competitor to something, ideas from the user's work, a redesign.
 
-- **Something new** (a new app, a new screen): start from the closest Congo app or screens, as in `send`.
-- **A redesign of the user's app** (`app.path`): read the real page's source and build the redesigned page from a copy of the app. When the user asked for several directions, read Impeccable's `live.md` section "Plan three variants" for the identity lock and give each direction a different primary axis. A narrow request stays narrow: change that part and keep the rest of the page.
+- **Something new:** start from the closest Congo app or screens, main screen first. Add a brief when it is a product idea.
+- **A redesign of the user's project** (`app.path`): read the real page's source and build the redesigned page from a copy of it, as a static page. When the user asked for several directions, read Impeccable's `live.md` section "Plan three variants" for the identity lock and give each direction a different primary axis. A narrow request stays narrow.
+
+## `expand`
+
+The user pressed Expand on a prototype whose main screen is done. Build out the rest of the app around it **in the same prototype** (`design.dir`): adapt the remaining screens the product needs, relabel the navigation, and remove what the product has no use for. Then `WS preview <design.dir> --status ready --json` and reply with one line.
 
 ## `tweak`: a quick action on a prototype
 
-Makes a **new** prototype; the original stays. `design.dir` is the original (`design.sourceDir` its source when it is a whole app). Copy it and change the copy.
+Makes a **new** prototype in `outputs[0].dir`; the original (`design.dir`) stays. For a whole app, copy the original's `source/` without `node_modules`, link `node_modules` the way the original does (a junction on Windows, `mklink /J`; a symlink elsewhere), change the copy, and `WS preview`. For a static page, copy `preview/` and change the copy.
 
 | `action.key` | What to do |
 | --- | --- |
 | `subtle` | One variation within the same identity: Impeccable `live.md` default mode, one different primary axis. |
 | `layout`, `colorize`, `bolder`, `quieter` | Read `action.reference` (Impeccable's command reference) and apply that command. |
 | `distill`, `typeset`, `animate`, `delight`, `overdrive`, `polish`, `clarify`, `adapt`, `harden` | Same: read the command reference and apply it. |
-| `critique`, `audit` | Run the command; write its report into `design.json` `summary` (short) and a `report.md` beside it; the copy may stay unchanged. |
+| `critique`, `audit` | Run the command; write its report into `summary` (short) and a `report.md` in the prototype folder; the copy may stay unchanged. |
 | `custom` | Apply the user's words in `action.brief`. |
-| `editable` | The page is a script bundle. Render it and save it as a static page (see Prototypes) that looks the same; change nothing else. |
+| `editable` | The page is a script bundle. Render it and save it as a static page that looks the same; change nothing else. |
 
-Title it `<original title> · <action label>` and say what changed in `summary`.
+Title it `<original title> · <action label>`, keep the original's `status`, and say what changed in `summary`.
 
-## `build`: Use this
+## `build`: Pull into a project
 
-The only request that changes the user's code. `design` is the prototype (`design.sourceDir` its source for a whole app).
+The only request that changes the user's code. `design` is the prototype (`design.sourceDir` its source); `app` is where it goes.
 
-- **The user's existing app** (`app.path`): put the prototype into the project. Install the Congo screens it uses with `congo add` (so receipts and notices are kept), carry over the adaptation from the prototype's source, and integrate it into the existing routes, navigation and styles. Keep product behavior, data bindings, forms and actions working and the user's unrelated edits intact. For a whole-app direction, carry it through the affected screens and shared components; a narrow change stays narrow. Run the project's checks and open the real routes.
-- **A new app** (no `app.path`): use the folder the user named; otherwise create a new folder named after the product in your current folder and say where it is. Run `congo create <template-id> --project <new folder>` for the app the prototype starts from (`source` in its `design.json`), then carry the prototype's changes over: apply the source's diff since its `congo source` commit (`git diff <first commit>` in `design.sourceDir`, then `git apply` in the new folder), or copy the changed files. Add any other screens it uses with `congo add`. Name the project after the product (`package.json` `name`, the page title). Install its dependencies and build once, then attach it with `node .vibe/skills/congo/scripts/workspace.mjs connect --project <new folder>`.
+- **An existing project** (`app.path`): put the prototype's work into it. Carry over the adaptation from the prototype's source (its diff since the "congo source" commit shows exactly what changed), install any Congo screens it uses with `congo add` so receipts and notices are kept, and integrate it into the existing routes, navigation and styles. Keep product behavior and the user's unrelated edits intact; a narrow change stays narrow. Run the project's checks and open the real routes.
+- **A new project** (no `app`): use the folder the user named; otherwise create a new folder named after the product in your current folder and say where it is. Run `congo create <template-id> --project <new folder>` for the app the prototype starts from (`base` or `source` in its `prototype.json`), then apply the prototype's changes: `git diff <the "congo source" commit>` in `design.sourceDir`, then `git apply` in the new folder, or copy the changed files. Name the project after the product (`package.json` `name`, the page title). Install its dependencies and build once.
 
-Reply with one line (where it went, and that it can be started in My app), and the details here.
+Reply with one line saying where it went and how to run it. The prototype stays in its Congo file.
 
 ## Live editing a prototype
 
-A `live-edit` request with a `design` whose `sourceDir` is set: the user pressed Edit on a whole-app prototype. Install the source's dependencies if they are missing, start its dev server on a free local port and keep it running, run Impeccable's live boot in `sourceDir` with `--allow-missing-context` (a prototype has no PRODUCT.md or DESIGN.md; never start an interview for one), following its `live.md`, and `live-setup.md` on first use (a Vite single-page app injects into `index.html`), and reply `steer_done` with the dev server's local URL. On Windows never pipe `impeccable live` output into another command (the helper keeps the pipe open and the command hangs); redirect it to a file. Then poll that folder's helper, and handle the user's picks there as `live.md` says; accepted changes go into the prototype's source. When the user stops editing, a `rebuild` request follows: build the source again and copy `dist` into `design.dir`, keeping `design.json`, then reply and poll the working area again.
+A `live-edit` request with a `design` whose `sourceDir` is set: the user pressed Edit on a whole-app prototype. Start the source's dev server on a free local port and keep it running, run Impeccable's live boot in `sourceDir` with `--allow-missing-context` (a prototype has no PRODUCT.md or DESIGN.md; never start an interview for one), following its `live.md`, and `live-setup.md` on first use (a Vite single-page app injects into `index.html`), and reply `steer_done` with the dev server's local URL. On Windows never pipe `impeccable live` output into another command; redirect it to a file. Then poll that folder's helper and handle the user's picks as `live.md` says; accepted changes go into the prototype's source. When the user stops editing, a `rebuild` request follows: `WS preview <design.dir>`, reply, and poll the working area again.
 
-A `live-edit` request without a `design` is for the user's own app in My app: its steer message says what to do. So do `start-app` and `switch-to-area`.
+`start-app` and `switch-to-area` requests say what to do in their message.

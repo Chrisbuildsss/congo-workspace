@@ -107,11 +107,16 @@ export function describeAction(key) {
   return null;
 }
 
-export function buildRequest({ type, id = newId(), files, reference, impeccableReference, app, compose, text, design, action, item, items, attachment }) {
+export function buildRequest({ type, id = newId(), files, reference, impeccableReference, app, compose, text, design, action, item, items, attachment, outDir = null, filesRoot = null, helper = null }) {
   const count = PROTOTYPE_TYPES.includes(type) ? PROTOTYPES : 0;
+  // Each prototype is a folder in a Congo file: its preview build in
+  // preview/, its working source (whole apps) in source/.
   const outputs = Array.from({ length: count }, (_, i) => {
     const designId = `${id}-${i + 1}`;
-    return { id: designId, dir: path.join(files.designs, designId) };
+    const dir = path.join(outDir ?? files.designs, designId);
+    return outDir
+      ? { id: designId, dir, preview: path.join(dir, 'preview'), source: path.join(dir, 'source'), meta: path.join(dir, 'prototype.json') }
+      : { id: designId, dir };
   });
   const commandRef = action?.command && impeccableReference ? path.join(impeccableReference, `${action.command}.md`) : null;
 
@@ -125,6 +130,9 @@ export function buildRequest({ type, id = newId(), files, reference, impeccableR
       sources: path.join(files.sources, id),
       protocol: reference,
       impeccableReference: impeccableReference ?? null,
+      congoFiles: filesRoot,
+      congoFile: outDir,
+      helper,
     },
     app: app ? { name: app.name, path: app.path } : null,
     ...(type === 'send' ? { destination: app ? 'existing' : 'new', items: items ?? [] } : {}),
@@ -146,15 +154,14 @@ export function buildRequest({ type, id = newId(), files, reference, impeccableR
     action: action ? { key: action.key, label: action.label, command: action.command, brief: action.brief, reference: commandRef } : null,
     item: item ?? null,
     outputs,
-    designJson: {
-      required: ['title'],
+    prototypeJson: {
+      required: ['title', 'status (main: the main screen is adapted; ready: the whole prototype is)'],
       optional: [
         'summary',
         'format (desktop|mobile)',
-        'root (true for a whole app: served at the root of its own local address)',
-        'sourceDir (the prototype\'s runnable source folder, for Edit and Use this)',
-        'url (loopback dev server instead of index.html)',
+        'brief {who, why, supports, next} (product ideas only)',
         'source',
+        'sources',
         'notices',
       ],
     },
@@ -179,30 +186,33 @@ export function steerMessage(request, requestFile) {
         : "Congo's Library (nothing selected: find the closest app or screens)";
       const forApp = request.app ? ` for the user's app at ${request.app.path}` : ' for a new app';
       const note = request.request ? ` The user's note: "${clip(request.request, 1500)}".` : '';
-      lead = `Make one running prototype${forApp} from ${what}.${note} Each item's note is in the request file. Build it in the working area, outside the user's project.`;
+      lead = `Make one running prototype${forApp} from ${what}.${note} Each item's note is in the request file. Main screen first: adapt the main screen or workflow, build the preview and reply; the rest waits for Expand. It goes in the Congo file the request names, outside the user's project.`;
       break;
     }
     case 'compose':
-      lead = `Make one running prototype for this request: "${clip(request.request, 1500)}"${request.app ? ` (app: ${request.app.name})` : ''}. Several side by side only if the user asked for that (a redesign or "a few directions"). Build in the working area, outside the user's project.`;
+      lead = `Make one running prototype for this request: "${clip(request.request, 1500)}"${request.app ? ` (app: ${request.app.name})` : ''}. Main screen first; several side by side only if the user asked for that (a redesign or "a few directions"). It goes in the Congo file the request names, outside the user's project.`;
+      break;
+    case 'expand':
+      lead = `Expand the prototype "${clip(request.design?.title, 120)}": build out the rest of the app around its main screen, in the same prototype (${request.design?.dir ?? 'its folder'}), then rebuild its preview with status ready.`;
       break;
     case 'tweak':
       lead = `Make a new prototype from "${clip(request.design?.title, 120)}": ${request.action.brief}. Keep the original; write the result into the folder the request names.`;
       break;
     case 'library':
-      lead = `${request.action ? `${request.action.label} on` : 'Use'} the Congo ${request.item.kind} "${clip(request.item.title, 120)}"${request.item.app ? ` from ${request.item.app}` : ''}. Retrieve its source with the Congo CLI or MCP into the request's sources folder, adapt it outside the user's project, and write one running prototype into the folder the request names.`;
+      lead = `${request.action ? `${request.action.label} on` : 'Prototype'} the Congo ${request.item.kind} "${clip(request.item.title, 120)}"${request.item.app ? ` from ${request.item.app}` : ''}. Get its source through the Congo CLI or MCP, adapt it outside the user's project, main screen first, and write one running prototype into the Congo file folder the request names.`;
       break;
     case 'build':
-      lead = `Use this: ${request.app ? `apply the prototype "${clip(request.design?.title, 120)}" to the user's project at ${request.app.path}` : `create the user's new app from the prototype "${clip(request.design?.title, 120)}" with congo create`}. This is the only request that changes the user's code. Ask in your chat if the project or page is unclear.`;
+      lead = `Pull into a project: ${request.app ? `apply the prototype "${clip(request.design?.title, 120)}" to the user's project at ${request.app.path}` : `create the user's new project from the prototype "${clip(request.design?.title, 120)}" with congo create`}. This is the only request that changes the user's code. Ask in your chat if the project or page is unclear.`;
       break;
     case 'rebuild':
-      lead = `The user finished live-editing the prototype "${clip(request.design?.title, 120)}". Rebuild its static output in ${request.design?.dir ?? 'its folder'} from ${request.design?.sourceDir ?? 'its source'} so the card shows the edits, then poll the workspace area (${request.workspace.area}) again.`;
+      lead = `The user finished live-editing the prototype "${clip(request.design?.title, 120)}". Rebuild its preview (${request.design?.dir ?? 'its folder'}) from its source so the card shows the edits, then poll the workspace area (${request.workspace.area}) again.`;
       break;
     case 'start-app':
       lead = `Start the user's app at ${request.app?.path ?? '(ask which app)'} with its own dev command and keep it running. Reply steer_done with its local URL (http://127.0.0.1:PORT/ or http://localhost:PORT/) so the workspace can show it.`;
       break;
     case 'live-edit':
       lead = request.design?.sourceDir
-        ? `Turn on Impeccable's live editor for the prototype "${clip(request.design.title, 120)}" whose source is ${request.design.sourceDir}: install its dependencies if needed, start its dev server and keep it running, run Impeccable's live boot in that folder (its live.md, and live-setup.md on first use), reply steer_done with the dev server's local URL, then poll that folder's helper instead of the workspace area. The workspace follows both.`
+        ? `Turn on Impeccable's live editor for the prototype "${clip(request.design.title, 120)}" whose source is ${request.design.sourceDir}: install its dependencies if needed, start its dev server and keep it running, run Impeccable's live boot in that folder with --allow-missing-context (its live.md, and live-setup.md on first use), reply steer_done with the dev server's local URL, then poll that folder's helper instead of the workspace area. The workspace follows both.`
         : `Turn on Impeccable's live editor for the user's running app at ${request.app?.path ?? '(ask which app)'}: run Impeccable's live boot in that project (its live.md, and live-setup.md on first use), keep the app's dev server running, reply steer_done with the app's local URL, then poll that project's helper instead of the workspace area. The workspace follows both.`;
       break;
     case 'switch-to-area':

@@ -1,0 +1,4 @@
+interface:
+  display_name: Congo Ideas
+  short_description: Find business or product ideas from the user's own work, their interests or an...
+  default_prompt: Use Congo Ideas to redesign, critique, audit, or polish this frontend.

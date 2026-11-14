@@ -7,7 +7,7 @@ import { readJson, writeJsonAtomic } from './store.mjs';
 const TTL_MS = 10 * 60 * 1000;
 
 export function registryOrigin(env = process.env) {
-  const value = env.CONGO_REGISTRY || 'https://buildwithcongo.com';
+  const value = env.CONGO_REGISTRY || 'https://gocongo.ai';
   const url = new URL(value);
   if (url.protocol !== 'https:' && !['127.0.0.1', 'localhost'].includes(url.hostname)) {
     throw new Error('CONGO_REGISTRY must be https');

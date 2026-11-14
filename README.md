@@ -42,7 +42,7 @@ cp -R congo-workspace/.agents/skills/impeccable congo-workspace/.agents/skills/c
 
 Use `.claude`, `.cursor`, or the matching harness folder from the [manual installation table](#manual-copy-no-node-required) when installing for another tool. Reload your tool, then run `/impeccable init` (`$impeccable init` on Codex).
 
-Congo uses the [Congo CLI](https://www.npmjs.com/package/@gocongo/cli) (`npm install --global @gocongo/cli`, Node 22.20 or later) or Congo's MCP server. Browsing screenshots and previews is free; installing source requires a Congo subscription. Sign in yourself with `congo login` in your browser; the agent never handles your sign-in.
+Congo uses the [Congo CLI](https://www.npmjs.com/package/gocongo) (`npm install --global gocongo`, Node 22.20 or later) or Congo's MCP server. Browsing screenshots and previews is free; installing source requires a Congo subscription. Sign in yourself with `congo login` in your browser; the agent never handles your sign-in.
 
 Impeccable is by [Paul Bakaus](https://www.paulbakaus.com) and contributors, under Apache 2.0. This fork is not affiliated with or endorsed by the Impeccable project, so report problems with the Congo part here rather than on Impeccable's issue tracker. [NOTICE.md](NOTICE.md) lists the files the fork changes.
 

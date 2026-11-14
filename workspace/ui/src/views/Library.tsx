@@ -305,7 +305,7 @@ function ExploreGate({ access, checking, onCheck }: { access: LibraryAccess; che
       {signedIn ? <p className="explore-gate-step">You are signed in, but this account has no active subscription.</p> : null}
       {access.state === "no-cli" ? (
         <p className="explore-gate-step">
-          The Congo CLI is not installed. Run <code>npm install -g @gocongo/cli</code>, then <code>congo login</code>.
+          The Congo CLI is not installed. Run <code>npm install -g gocongo</code>, then <code>congo login</code>.
         </p>
       ) : null}
       {access.state === "unknown" ? (

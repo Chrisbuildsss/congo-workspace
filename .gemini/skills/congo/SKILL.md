@@ -27,11 +27,11 @@ The Congo CLI commands, sign-in and subscription rules are in Impeccable's `refe
 
 ## Without a Congo subscription
 
-The Library needs a subscription: Explore in the workspace and every source pull (`congo create`, `congo add`, `WS prepare`) only work for a signed-in account with one. `congo whoami --json` shows `subscription.active`. Prototyping does not need it.
+Library source needs a subscription: every source pull (`congo create`, `congo add`, `WS prepare`) only works for a signed-in account with one. Explore, search, screenshots and previews are free and need no account. `congo whoami --json` shows `subscription.active`. Prototyping does not need it.
 
 When the user is not signed in or has no subscription, do not stop and do not fail the request:
 
-1. Tell them once, in a line: the Library needs a Congo subscription (`congo login` if they have one, [gocongo.ai/pricing](https://gocongo.ai/pricing) if not), and you are building this one with your own tools.
+1. Tell them once, in a line: Library source needs a Congo subscription (`congo login` if they have one, [gocongo.ai/pricing](https://gocongo.ai/pricing) if not), and you are building this one with your own tools.
 2. Build the prototype yourself: `WS new`, then write a static, clickable `preview/index.html` for the main screen with its styles and only the scripts its interactions need, and set `status` to `ready` in `prototype.json`. A redesign of their own project works from their code as usual.
 3. It lands in Prototypes like any other, and Pull into a project still works.
 

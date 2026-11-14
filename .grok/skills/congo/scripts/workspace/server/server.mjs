@@ -14,7 +14,7 @@ import { helperInfo } from './live.mjs';
 import { buildRequest, describeAction, isBundleOnly, newId, normalizeTray, scanDesigns, steerMessage, writeRequest } from './requests.mjs';
 import { DevServers, normalizeUrl } from './devserver.mjs';
 import { runImpeccable } from './impeccable.mjs';
-import { libraryAccess, savedItems } from './congo-cli.mjs';
+import { savedItems } from './congo-cli.mjs';
 import { appendHistory, createCongoFile, createStub, filesRoot, listCongoFiles, previewDir, removeTree, sourceDirOf as prototypeSource, updatePrototype } from './files.mjs';
 
 export const PROTOCOL = 1;
@@ -297,25 +297,6 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     const value = await savedItems({ env, ...(runCongo ? { run: runCongo } : {}) });
     savedCache = { at: Date.now(), value };
     return value;
-  }
-
-  // Whether Explore may show the Library: the account's subscription, asked of
-  // the person's own Congo CLI. A yes is kept for ten minutes; anything else
-  // is asked again after a few seconds, so signing in shows up quickly.
-  // A courtesy gate, open to change like the rest of this code: Congo's server
-  // is what refuses source pulls without a subscription.
-  let accessCache = null;
-  let accessPending = null;
-  async function access(refresh = false) {
-    const age = accessCache ? Date.now() - accessCache.at : Infinity;
-    if (!refresh && accessCache && age < (accessCache.value.allowed ? 600_000 : 8_000)) return accessCache.value;
-    accessPending ??= libraryAccess({ env, ...(runCongo ? { run: runCongo } : {}) })
-      .then((value) => {
-        accessCache = { at: Date.now(), value };
-        return value;
-      })
-      .finally(() => { accessPending = null; });
-    return accessPending;
   }
 
   // --- requests to the user's AI ------------------------------------------
@@ -815,13 +796,6 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
     }
     if (req.method === 'GET' && url.pathname === '/api/status') return send(res, 200, await status());
     if (req.method === 'GET' && url.pathname === '/api/state') return send(res, 200, publicState());
-    if (req.method === 'GET' && url.pathname === '/api/library/access') {
-      return send(res, 200, await access(url.searchParams.get('refresh') === '1'));
-    }
-    if (req.method === 'GET' && url.pathname.startsWith('/api/library/')) {
-      const allowed = await access();
-      if (!allowed.allowed) return send(res, 403, { error: 'Explore needs a Congo subscription', access: allowed });
-    }
     if (req.method === 'GET' && url.pathname === '/api/library/apps') return send(res, 200, await catalog.apps());
     if (req.method === 'GET' && url.pathname === '/api/library/categories') return send(res, 200, await catalog.categories());
     if (req.method === 'GET' && url.pathname === '/api/library/screens') {

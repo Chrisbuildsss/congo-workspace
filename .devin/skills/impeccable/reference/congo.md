@@ -7,9 +7,9 @@ Congo is a library of real app screens, full editable app templates and design h
 Check once per session, the first time Congo would help: `node --version` and `congo --version`.
 
 - **Node older than 22.20:** tell the user in one plain sentence ("Congo needs Node 22.20 or later and this machine has 20.11, so I'm continuing without it.") and carry on without Congo.
-- **No `congo` command, no network, or any other failure:** one sentence, then carry on exactly as Impeccable always does. Never install the CLI unasked; mention once that `npm install --global @gocongo/cli` adds it.
+- **No `congo` command, no network, or any other failure:** one sentence, then carry on exactly as Impeccable always does. Never install the CLI unasked; mention once that `npm install --global gocongo` adds it.
 - **Congo's MCP server connected** (tools named `congo_screens_search`, `congo_resources_search`, `congo_resources_get`, `congo_resources_files`, `congo_resources_read`, `congo_handbooks_list`, `congo_handbook_read`): use those in place of the CLI commands below, with the same rules.
-- **Windows and Git Bash:** commands that use the saved sign-in (`add`, `create`, `update`, `handbooks`) work in Git Bash from Congo CLI 0.2.4. Older versions stop there with "Cannot secure saved sign-in permissions for this Windows account." because Git Bash puts its own `whoami.exe` first on PATH. If `congo --version` is older than 0.2.4, suggest `npm install --global @gocongo/cli@latest`, or run those commands from PowerShell or cmd.
+- **Windows and Git Bash:** commands that use the saved sign-in (`add`, `create`, `update`, `handbooks`) work in Git Bash from Congo CLI 0.2.4. Older versions stop there with "Cannot secure saved sign-in permissions for this Windows account." because Git Bash puts its own `whoami.exe` first on PATH. If `congo --version` is older than 0.2.4, suggest `npm install --global gocongo@latest`, or run those commands from PowerShell or cmd.
 
 ## Commands
 

@@ -1,0 +1,427 @@
+{
+  "shots": [
+    "workspace\\qa\\explore-fixes\\before-explore-390-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-apps-ghosted-real-estate-crm-390-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-screens-390-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-saved-390-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-390-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-apps-ghosted-real-estate-crm-390-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-screens-390-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-saved-390-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-1440-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-apps-ghosted-real-estate-crm-1440-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-screens-1440-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-saved-1440-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-1440-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-apps-ghosted-real-estate-crm-1440-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-screens-1440-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-saved-1440-dark.png",
+    "workspace\\qa\\explore-fixes\\before-explore-1920-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-apps-ghosted-real-estate-crm-1920-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-screens-1920-light.png",
+    "workspace\\qa\\explore-fixes\\before-explore-saved-1920-light.png"
+  ],
+  "pictures": {
+    "explore-390": {
+      "columns": 1,
+      "cards": 17,
+      "cut": 7,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "1586x992",
+          "card": "370x278",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "370x278",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1626x967",
+          "card": "370x278",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "370x278",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "370x278",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "370x278",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-apps-ghosted-real-estate-crm-390": {
+      "columns": 0,
+      "cards": 0,
+      "cut": 0,
+      "scaledUp": 0,
+      "sample": []
+    },
+    "explore-screens-390": {
+      "columns": 0,
+      "cards": 0,
+      "cut": 0,
+      "scaledUp": 0,
+      "sample": []
+    },
+    "explore-saved-390": {
+      "columns": 1,
+      "cards": 3,
+      "cut": 0,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "0x0",
+          "card": "370x278",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "0x0",
+          "card": "370x278",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "0x0",
+          "card": "370x278",
+          "cut": false,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-1440": {
+      "columns": 2,
+      "cards": 17,
+      "cut": 10,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1626x967",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-apps-ghosted-real-estate-crm-1440": {
+      "columns": 2,
+      "cards": 24,
+      "cut": 8,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "2160x1350",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-screens-1440": {
+      "columns": 2,
+      "cards": 24,
+      "cut": 10,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "2160x1350",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-saved-1440": {
+      "columns": 2,
+      "cards": 3,
+      "cut": 3,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1626x967",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x513",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-1920": {
+      "columns": 2,
+      "cards": 17,
+      "cut": 8,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1626x967",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-apps-ghosted-real-estate-crm-1920": {
+      "columns": 2,
+      "cards": 24,
+      "cut": 8,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "2160x1350",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-screens-1920": {
+      "columns": 2,
+      "cards": 24,
+      "cut": 8,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "2160x1350",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-saved-1920": {
+      "columns": 2,
+      "cards": 3,
+      "cut": 3,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1626x967",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "924x693",
+          "cut": true,
+          "scaledUp": false
+        }
+      ]
+    }
+  },
+  "errors": []
+}

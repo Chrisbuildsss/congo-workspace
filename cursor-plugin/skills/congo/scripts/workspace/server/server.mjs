@@ -929,6 +929,35 @@ export async function startWorkspaceServer({ root, uiDir, port = 4870, contentPo
         store.update((s) => { if (s.designs[design.id]) s.designs[design.id].title = title; });
         return send(res, 200, publicState());
       }
+      case '/api/requests/cancel': {
+        // The person gave up on a request that is still waiting: its
+        // placeholders go, and its file goes so an AI that picks the request
+        // up later finds nothing to do. Prototypes that already have a
+        // preview stay.
+        const request = store.get().requests[body.id];
+        if (!request) return send(res, 404, { error: 'Request not found' });
+        if (request.status !== 'sent') return send(res, 409, { error: 'That request is already finished' });
+        const unfinished = (request.outputs ?? [])
+          .map((id) => store.get().designs[id])
+          .filter((design) => design && !design.src);
+        for (const design of unfinished) {
+          closeRootServer(design.id);
+          if (design.dir && inCongoFiles(design.dir)) removeTree(design.dir);
+        }
+        if (/^[a-z0-9]{1,32}$/i.test(request.id)) fs.rmSync(path.join(files.requests, `${request.id}.json`), { force: true });
+        store.update((s) => {
+          const r = s.requests[request.id];
+          r.status = 'error';
+          r.message = 'Cancelled';
+          r.doneAt = new Date().toISOString();
+          for (const design of unfinished) {
+            delete s.designs[design.id];
+            for (const c of s.composes) c.designIds = c.designIds.filter((id) => id !== design.id);
+          }
+          if (r.composeId) settleCompose(s, r.composeId);
+        });
+        return send(res, 200, publicState());
+      }
       case '/api/designs/delete': {
         const design = store.get().designs[body.id];
         if (!design) return send(res, 404, { error: 'Design not found' });

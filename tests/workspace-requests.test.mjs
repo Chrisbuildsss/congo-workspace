@@ -59,10 +59,13 @@ const broadcast = (event) => {
 fs.mkdirSync(path.join(area, '.impeccable', 'live'), { recursive: true });
 fs.writeFileSync(path.join(area, '.impeccable', 'live', 'server.json'), JSON.stringify({ pid: process.pid, port: helper.address().port, token: helperToken }));
 
-// The person's Congo CLI, faked: `congo saved --json --all` lists one Saved app.
+// The person's Congo CLI, faked: `congo whoami --json` answers for the account
+// in `account`, and `congo saved --json --all` lists one Saved app.
 const congoCalls = [];
+let account = { code: 0, stdout: JSON.stringify({ email: 'person@example.test', subscription: { active: true, paidThrough: '2026-12-02' } }), stderr: '' };
 const fakeCongo = async (args) => {
   congoCalls.push(args);
+  if (args[0] === 'whoami') return account;
   return { code: 0, stdout: JSON.stringify({ items: [{ id: 'crm-app', slug: 'crm', name: 'CRM', kind: 'app', url: 'https://example.test/websites/crm', savedAt: null }], total: 1, offset: 0, limit: 100 }), stderr: '' };
 };
 const server = await startWorkspaceServer({ root, uiDir, port: 4975, token: 't', bootHelper: false, filesDir: path.join(tmp, 'congo-files'), runCongo: fakeCongo });
@@ -329,6 +332,52 @@ test("the Saved filter asks the person's own Congo CLI and reads only catalog id
   assert.deepEqual([out.available, out.signedIn], [true, false]);
   const missing = await savedItems({ run: async () => ({ code: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn congo ENOENT'), { code: 'ENOENT' }) }) });
   assert.match(missing.reason, /Install the Congo CLI/);
+});
+
+test('Explore is free: it answers without a subscription or a sign-in, and never asks the CLI about the account', async () => {
+  const active = account;
+  const asked = [];
+  try {
+    for (const state of [
+      { code: 0, stdout: JSON.stringify({ email: 'person@example.test', subscription: { active: false, paidThrough: null } }), stderr: '' },
+      { code: 1, stdout: '', stderr: 'Sign in required. Run `congo login`.' },
+    ]) {
+      account = state;
+      for (const route of ['/api/library/apps', '/api/library/screens', '/api/library/categories']) {
+        const answer = await api(route);
+        assert.equal(answer.status, 200, route);
+        assert.equal(answer.value.access, undefined, route);
+        asked.push(route);
+      }
+      // A request for a prototype still goes to the AI.
+      const thread = (await api('/api/composes', {})).value.compose.id;
+      const request = await api('/api/requests', { type: 'compose', composeId: thread, text: 'A booking page for a barber' });
+      assert.equal(request.status, 200);
+      assert.ok(request.value.state.designs[`${request.value.request.id}-1`]);
+    }
+  } finally {
+    account = active;
+  }
+  assert.equal(asked.length, 6);
+  // The old check is gone, not just switched off.
+  assert.notEqual((await api('/api/library/access')).status, 200);
+});
+
+test('a request that is still waiting can be cancelled: its placeholder and its file go', async () => {
+  const thread = (await api('/api/composes', {})).value.compose.id;
+  const { value } = await api('/api/requests', { type: 'compose', composeId: thread, text: 'test' });
+  const id = value.request.id;
+  const placeholder = value.state.designs[`${id}-1`];
+  assert.ok(fs.existsSync(placeholder.dir));
+  const cancelled = await api('/api/requests/cancel', { id });
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.value.designs[`${id}-1`], undefined);
+  assert.equal(cancelled.value.requests.find((r) => r.id === id).status, 'error');
+  assert.equal(cancelled.value.composes.find((c) => c.id === thread).designIds.length, 0);
+  assert.equal(fs.existsSync(placeholder.dir), false);
+  assert.equal(fs.existsSync(path.join(area, 'requests', `${id}.json`)), false, 'an AI that polls later finds no request');
+  assert.equal((await api('/api/requests/cancel', { id })).status, 409);
+  assert.equal((await api('/api/requests/cancel', { id: 'nope' })).status, 404);
 });
 
 test('a prototype card exists the moment it is requested, then gains its preview, brief and status', async () => {

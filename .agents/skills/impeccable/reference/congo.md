@@ -1,15 +1,15 @@
 # Congo library
 
-Congo is a library of real app screens, full editable app templates and design handbooks, each with working React source ([buildwithcongo.com](https://buildwithcongo.com)). This fork of Impeccable makes it available to every command. It is not a step or a mode: reach for it when real, working source would make the task in hand better, and leave it alone when it would not. Everything else in this skill still applies; DESIGN.md, PRODUCT.md and the brief outrank anything Congo returns.
+Congo is a library of real app screens, full editable app templates and design handbooks, each with working React source ([gocongo.ai](https://gocongo.ai)). This fork of Impeccable makes it available to every command. It is not a step or a mode: reach for it when real, working source would make the task in hand better, and leave it alone when it would not. Everything else in this skill still applies; DESIGN.md, PRODUCT.md and the brief outrank anything Congo returns.
 
 ## Is Congo available
 
 Check once per session, the first time Congo would help: `node --version` and `congo --version`.
 
 - **Node older than 22.20:** tell the user in one plain sentence ("Congo needs Node 22.20 or later and this machine has 20.11, so I'm continuing without it.") and carry on without Congo.
-- **No `congo` command, no network, or any other failure:** one sentence, then carry on exactly as Impeccable always does. Never install the CLI unasked; mention once that `npm install --global @buildwithcongo/cli` adds it.
+- **No `congo` command, no network, or any other failure:** one sentence, then carry on exactly as Impeccable always does. Never install the CLI unasked; mention once that `npm install --global gocongo` adds it.
 - **Congo's MCP server connected** (tools named `congo_screens_search`, `congo_resources_search`, `congo_resources_get`, `congo_resources_files`, `congo_resources_read`, `congo_handbooks_list`, `congo_handbook_read`): use those in place of the CLI commands below, with the same rules.
-- **Windows and Git Bash:** commands that use the saved sign-in (`add`, `create`, `update`, `handbooks`) work in Git Bash from Congo CLI 0.2.4. Older versions stop there with "Cannot secure saved sign-in permissions for this Windows account." because Git Bash puts its own `whoami.exe` first on PATH. If `congo --version` is older than 0.2.4, suggest `npm install --global @buildwithcongo/cli@latest`, or run those commands from PowerShell or cmd.
+- **Windows and Git Bash:** commands that use the saved sign-in (`add`, `create`, `update`, `handbooks`) work in Git Bash from Congo CLI 0.2.4. Older versions stop there with "Cannot secure saved sign-in permissions for this Windows account." because Git Bash puts its own `whoami.exe` first on PATH. If `congo --version` is older than 0.2.4, suggest `npm install --global gocongo@latest`, or run those commands from PowerShell or cmd.
 
 ## Commands
 
@@ -27,7 +27,7 @@ A screen package holds `<app>/screens/<id>.tsx` (the entry: import its default e
 When a command fails, show its message as written and act on it:
 
 - "Sign in required. Run `congo login`.": offer `congo login`.
-- "Source needs an active Congo subscription ($30/month): https://buildwithcongo.com/pricing": show it verbatim. Screenshots and previews stay usable as references; build without the source.
+- "Source needs an active Congo subscription ($30/month): https://gocongo.ai/pricing": show it verbatim. Screenshots and previews stay usable as references; build without the source.
 - Terms or phone verification: show the link; the user completes it on the website, then you retry.
 
 ## Where Congo helps

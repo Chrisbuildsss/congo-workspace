@@ -24,7 +24,7 @@ test('generated required providers ship both skills with resolved placeholders',
     assert.match(skill,/workspace\.mjs/);
     assert.match(skill,/WS connect \[--project/,'connect, project optional');
     assert.match(skill,/live-poll/);
-    for(const helper of ['congo-compete','congo-ideas']){ const text=fs.readFileSync(path.join(base,helper,'SKILL.md'),'utf8'); assert.ok(!text.includes('{{'),helper); }
+    for(const helper of ['congo-compete','congo-ideas','congo-redesign']){ const text=fs.readFileSync(path.join(base,helper,'SKILL.md'),'utf8'); assert.ok(!text.includes('{{'),helper); }
   }
 });
 const read=(...p)=>fs.readFileSync(path.join(root,...p),'utf8').replace(/\r\n?/g,'\n');
@@ -61,6 +61,17 @@ test('workspace.md: every request makes a prototype in a Congo file; Pull into a
   assert.match(ref,/--allow-missing-context/);
   assert.doesNotMatch(ref,/—/,'no em dashes');
 });
+test('without a subscription the skill builds the prototype itself instead of failing',()=>{
+  const src=read('skills','congo','SKILL.src.md');
+  assert.match(src,/## Without a Congo subscription/);
+  assert.match(src,/do not stop and do not fail the request/);
+  assert.match(src,/Never try to get Library source another way/);
+  assert.match(src,/congo-redesign/);
+  const ref=read('skills','congo','reference','workspace.md');
+  assert.match(ref,/Do not fail the request for this/);
+  assert.doesNotMatch(ref,/Needs Congo sign-in and a subscription/);
+  assert.match(ref,/If the file is gone, the user cancelled that request/);
+});
 test('helper skills use congo underneath, add briefs, and ship no schedule skill',()=>{
   for(const name of ['congo-compete','congo-ideas']){
     const src=read('skills',name,'SKILL.src.md');
@@ -70,6 +81,14 @@ test('helper skills use congo underneath, add briefs, and ship no schedule skill
     assert.match(src,/No invented numbers/);
     assert.doesNotMatch(src,/—/,'no em dashes');
   }
+  const redesign=read('skills','congo-redesign','SKILL.src.md');
+  assert.match(redesign,/^name: congo-redesign$/m);
+  assert.match(redesign,/uses the `congo` skill/);
+  assert.match(redesign,/A narrow request stays narrow/);
+  assert.match(redesign,/one coherent direction/);
+  assert.match(redesign,/Nothing in the user's code changes until they choose \*\*Pull into a project\*\*/);
+  assert.match(redesign,/Without a subscription/);
+  assert.doesNotMatch(redesign,/—/,'no em dashes');
   assert.ok(!fs.existsSync(path.join(root,'skills','congo-schedule')),'schedules are a Congo AI feature');
 });
 test('no fixed three-app, three-version round anywhere in the Congo instructions',()=>{
@@ -81,7 +100,7 @@ test('the skill never hardcodes specific Congo apps, not even as examples',()=>{
   // Apps in the Congo catalog on 2026-11-11. The skill chooses from what the Library holds.
   const names=['Hateable','Dawdle','Ghosted','Hornett','Squiggle','Fewchat','Fumbler','Smudge','Bugbase','Shelfmade','Hush','Thorndesk','Stumble','Drama','Quibble','Crooked','Popped','Mumble','Minus','Dabble','Editr'];
   const pattern=new RegExp(`\\b(${names.join('|')})\\b|\\b(${names.map((n)=>n.toLowerCase()).join('|')})-[a-z0-9]`);
-  for(const file of [['skills','congo','SKILL.src.md'],['skills','congo','reference','workspace.md'],['skills','congo-compete','SKILL.src.md'],['skills','congo-ideas','SKILL.src.md'],['skill','reference','congo.md']]){
+  for(const file of [['skills','congo','SKILL.src.md'],['skills','congo','reference','workspace.md'],['skills','congo-compete','SKILL.src.md'],['skills','congo-ideas','SKILL.src.md'],['skills','congo-redesign','SKILL.src.md'],['skill','reference','congo.md']]){
     const match=read(...file).match(pattern);
     assert.equal(match,null,`${file.join('/')} names ${match?.[0]}`);
   }

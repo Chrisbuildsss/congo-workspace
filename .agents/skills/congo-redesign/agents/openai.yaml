@@ -1,0 +1,4 @@
+interface:
+  display_name: Congo Redesign
+  short_description: "Redesign the user's existing app with Congo: one page or the whole app, shown as..."
+  default_prompt: Use Congo Redesign to redesign, critique, audit, or polish this frontend.

@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createCatalog, registryOrigin } from '../skills/congo/scripts/workspace/server/catalog.mjs';
 
-const ORIGIN = 'https://buildwithcongo.com';
+const ORIGIN = 'https://gocongo.ai';
 const calls = [];
 const fixtures = {
   '/api/catalog': {

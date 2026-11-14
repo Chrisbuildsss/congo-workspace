@@ -18,12 +18,12 @@ Congo replaces the blank canvas, not the craft process.
 
 ## What Congo adds
 
-Impeccable works here exactly as it does upstream. The fork adds access to [Congo](https://buildwithcongo.com), a library of real app screens, full app templates and design handbooks that ship with working React source.
+Impeccable works here exactly as it does upstream. The fork adds access to [Congo](https://gocongo.ai), a library of real app screens, full app templates and design handbooks that ship with working React source.
 
 - **Real starting points.** The agent finds the app built around the same core job, installs its source, and adapts it to your product instead of starting from a blank page. One version by default; more when you ask.
 - **The same Impeccable process.** The agent adapts the app to your product and `DESIGN.md`, and Impeccable's critique, audit, responsive, polish, and documentation passes are there when you want them.
 - **Evidence beyond the first screen.** Congo also feeds planning, live-mode alternatives, direct edits, critique comparisons, and design handbooks.
-- **A workspace for product discovery and rapid prototyping.** Run `congo workspace` or type `/congo` (`$congo` in Codex). In Explore, browse real apps and screens, select some with a note on each, and send them to your AI. Results land in Prototypes as running apps you can click through and live edit, main screen first. They are kept in Congo files in your Documents, and Pull into a project puts one into your code. Two optional helpers, `/congo-compete` and `/congo-ideas`, research a competitor or find ideas and prototype them with a brief. Your own AI does the work.
+- **A workspace for product discovery and rapid prototyping.** Run `congo workspace` or type `/congo` (`$congo` in Codex). In Explore, browse real apps and screens, select some with a note on each, and send them to your AI. Results land in Prototypes as running apps you can click through and live edit, main screen first. They are kept in Congo files in your Documents, and Pull into a project puts one into your code. Three optional helpers, `/congo-ideas`, `/congo-compete` and `/congo-redesign`, find ideas, research a competitor or redesign your existing app, each as prototypes. Explore shows the Library to a Congo subscription; prototyping works without one, with your AI building from its own tools. Your own AI does the work.
 - **Every Impeccable command still works.** Use Impeccable exactly as before. The agent reaches for Congo when real source would improve the work.
 
 The instructions live in [skill/reference/congo.md](skill/reference/congo.md).
@@ -42,7 +42,7 @@ cp -R congo-workspace/.agents/skills/impeccable congo-workspace/.agents/skills/c
 
 Use `.claude`, `.cursor`, or the matching harness folder from the [manual installation table](#manual-copy-no-node-required) when installing for another tool. Reload your tool, then run `/impeccable init` (`$impeccable init` on Codex).
 
-Congo uses the [Congo CLI](https://www.npmjs.com/package/@buildwithcongo/cli) (`npm install --global @buildwithcongo/cli`, Node 22.20 or later) or Congo's MCP server. Browsing screenshots and previews is free; installing source requires a Congo subscription. Sign in yourself with `congo login` in your browser; the agent never handles your sign-in.
+Congo uses the [Congo CLI](https://www.npmjs.com/package/gocongo) (`npm install --global gocongo`, Node 22.20 or later) or Congo's MCP server. Browsing screenshots and previews is free; installing source requires a Congo subscription. Sign in yourself with `congo login` in your browser; the agent never handles your sign-in.
 
 Impeccable is by [Paul Bakaus](https://www.paulbakaus.com) and contributors, under Apache 2.0. This fork is not affiliated with or endorsed by the Impeccable project, so report problems with the Congo part here rather than on Impeccable's issue tracker. [NOTICE.md](NOTICE.md) lists the files the fork changes.
 

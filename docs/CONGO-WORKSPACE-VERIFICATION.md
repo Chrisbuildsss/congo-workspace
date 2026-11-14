@@ -12,6 +12,31 @@ Everything ran in scratch folders: a scratch workspace home (`CONGO_WORKSPACE_HO
 
 The timings and results below were measured before these changes; none of them changes how requests reach the AI.
 
+## Changes after v1.2.0 (owner, November 12, evening)
+
+Checked in a browser against a scratch workspace, with a stand-in Congo CLI answering for the account so the owner's real sign-in was not used. None of this was run with an AI. Screenshots: `workspace/qa/explore-fixes/` (`before-*` is v1.2.0, `after-*` is this change), at 390 and 1440 px in light and dark, plus 1920 px in light.
+
+- **Explore pictures are shown whole.** Cards were a fixed 4:3 that cropped Congo's wide covers and screenshots. Each card now takes its picture's own shape and never draws it larger than it is. Measured on the first cards of Apps, one app's screens, Screens and Saved at 390, 1440 and 1920 px: none cut off, none scaled up (`after-explore-report.json`; `before-explore-report.json` shows every measured card cut).
+- **Columns.** One across on a phone, two from 712 px, three from 1200 px, four from 1720 px, five from 2300 px. A View icon in the bar lets the person choose 2, 3 or 4 across instead; the choice is kept in that browser.
+- **Category and Sort icons** beside search. Category filters apps by Congo's app categories and screens by its screen categories (grouped). Sort orders apps by Featured, Name or Most screens. Screens cannot be sorted: Congo's screen listing returns pages in one order and takes no sort.
+- **Card actions on Explore.** Hovering a card shows Prototype this, a note box and More. A note typed there puts the card into the request with that note; nothing is sent until Send. The quick actions and Impeccable's commands sit behind More, in a list that scrolls inside the card.
+- **Explore needs a Congo subscription.** Built on November 12 and **taken out on November 14** (owner: Explore is free everywhere, as long as browsing installs nothing). See the November 14 section below.
+- **A waiting request can be cancelled.** A request that no AI ever answered showed grey placeholder cards for good (found on the owner's install: a "test" request sent on November 11 with the old three-version skill). The group now says "Waiting for your AI" when no AI is connected and has a Cancel, which removes the placeholders and the request file so an AI that connects later does not build it.
+- **Bigger navigation.** The two tabs in the left rail have larger icons (24 px), and larger labels when the sidebar is open.
+- **`/congo-redesign`**, a fourth entry skill beside `/congo`, `/congo-ideas` and `/congo-compete`: redesign the person's existing app, one page or the whole app, as prototypes; nothing changes in their code before Pull into a project. Its text is covered by tests; it was not run with an AI.
+
+## Changes for the move to gocongo.ai (November 14)
+
+Congo moved to gocongo.ai and its CLI package is now `gocongo` (from 0.2.9; `npx gocongo`). The workspace follows:
+
+- The library is read from `https://gocongo.ai` by default (`CONGO_REGISTRY` still overrides it).
+- Every link and install command the workspace, the skills and the README show names gocongo.ai and `gocongo`.
+- The workspace interface declares the Node types its build needs (`@types/node` in `workspace/ui/package.json`), so it builds on a clean machine.
+
+- **Explore is free.** The subscription check is removed from the interface, the local server and the skills: Explore opens for anyone, signed in or not. Browsing installs nothing; an app's source is fetched only when a prototype starts from it, and that still needs the Library subscription, which Congo's server enforces. The skills say Library source needs a subscription, not the Library.
+
+Checked on Linux in a scratch workspace, none of it with an AI: the Congo and workspace test files, `bun run build:release` and `bun run test` pass; Explore loads Congo's apps from gocongo.ai with a stand-in CLI that is signed out. The eight subscription-note pictures (`after-gate-*`) are deleted with the check. Not rerun: everything measured on Windows above.
+
 ## Who did what
 
 | Part | Done by |

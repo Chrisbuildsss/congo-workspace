@@ -86,6 +86,8 @@ export default function DesignCard({
   compact = false,
   saved = false,
   clickDeselects = true,
+  natural = false,
+  onNote,
 }: {
   design: Design;
   onOpen: () => void;
@@ -109,6 +111,14 @@ export default function DesignCard({
   saved?: boolean;
   /** Clicking a selected card deselects it (Variant); the Library opens it instead. */
   clickDeselects?: boolean;
+  /** Explore: the card takes the picture's own shape and shows all of it. */
+  natural?: boolean;
+  /**
+   * Explore: the card shows only its main action, a note box and More. A note
+   * typed here goes with the item into the request, instead of sending
+   * anything; the quick actions wait behind More.
+   */
+  onNote?: (note: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -142,13 +152,18 @@ export default function DesignCard({
     }
   };
 
-  const quick = [...(primary ? [primary] : []), ...tweaks];
+  // With a note box (Explore), the quick actions sit behind More.
+  const quick = onNote ? (primary ? [primary] : []) : [...(primary ? [primary] : []), ...tweaks];
+  const more: { key: CardAction; label: string }[] = [
+    ...(onNote ? tweaks.map((item) => ({ key: item.key, label: item.label })) : []),
+    ...MORE_COMMANDS.map((command) => ({ key: `more:${command}` as CardAction, label: command[0].toUpperCase() + command.slice(1) })),
+  ];
 
   return (
     <div
       className={`design-card ${selected ? "is-selected" : ""} ${
         compact ? "is-compact" : ""
-      } ${saved ? "is-saved" : ""}`}
+      } ${saved ? "is-saved" : ""} ${natural ? "is-natural" : ""}`}
       data-format={design.format}
       role="button"
       tabIndex={0}
@@ -263,18 +278,14 @@ export default function DesignCard({
           ref={quickRef}
           className="card-quick-actions"
           data-open={quickOpen || undefined}
+          data-more={moreOpen || undefined}
           onClick={(event) => event.stopPropagation()}
         >
           {disabled ? <span className="card-quick-note">{actionsDisabledNote}</span> : null}
           {moreOpen
-            ? MORE_COMMANDS.map((command) => (
-                <button
-                  type="button"
-                  key={command}
-                  disabled={disabled}
-                  onClick={() => activate(`more:${command}`)}
-                >
-                  <span>{command[0].toUpperCase() + command.slice(1)}</span>
+            ? more.map((item) => (
+                <button type="button" key={item.key} disabled={disabled} onClick={() => activate(item.key)}>
+                  <span>{item.label}</span>
                   <i>›</i>
                 </button>
               ))
@@ -291,7 +302,7 @@ export default function DesignCard({
                 </button>
               ))}
           {showMore ? (
-            <button type="button" disabled={disabled} onClick={() => setMoreOpen((value) => !value)}>
+            <button type="button" className="quick-more-toggle" onClick={() => setMoreOpen((value) => !value)}>
               <span>{moreOpen ? "Back" : "More"}</span>
               <i>{moreOpen ? "‹" : "…"}</i>
             </button>
@@ -301,18 +312,25 @@ export default function DesignCard({
               className="quick-vary-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (custom.trim() && !disabled) {
-                  activate(`custom:${custom.trim()}`);
+                const text = custom.trim();
+                if (!text) return;
+                if (onNote) {
+                  // Into the request, with this note. Nothing is sent yet.
+                  onNote(text);
+                  setCustom("");
+                  setQuickOpen(false);
+                } else if (!disabled) {
+                  activate(`custom:${text}`);
                   setCustom("");
                 }
               }}
             >
               <input
                 value={custom}
-                disabled={disabled}
+                disabled={onNote ? false : disabled}
                 onChange={(event) => setCustom(event.target.value)}
-                placeholder="Vary…"
-                aria-label="Describe a variation"
+                placeholder={onNote ? "Add a note…" : "Vary…"}
+                aria-label={onNote ? `Add ${design.title} to your request with a note` : "Describe a variation"}
               />
             </form>
           ) : null}

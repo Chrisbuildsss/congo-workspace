@@ -7,7 +7,7 @@ argument-hint: "[what to prototype, or open the workspace]"
 license: Apache-2.0
 ---
 
-Congo is a workspace for product discovery and rapid prototyping. Its Library holds real, working apps and their screens with source ([buildwithcongo.com](https://buildwithcongo.com)). A prototype that starts from a real app looks like a real product and can be clicked through in minutes. You are the only AI. This chat stays the conversation.
+Congo is a workspace for product discovery and rapid prototyping. Its Library holds real, working apps and their screens with source ([gocongo.ai](https://gocongo.ai)). A prototype that starts from a real app looks like a real product and can be clicked through in minutes. You are the only AI. This chat stays the conversation.
 
 `.qoder/skills/congo/scripts` below is this skill's `scripts` folder: resolve it from the directory that contains this SKILL.md (the base directory the runtime reports for the skill), and use the written path only when none is reported. `WS` below means `node .qoder/skills/congo/scripts/workspace.mjs`.
 
@@ -24,7 +24,21 @@ Congo is a workspace for product discovery and rapid prototyping. Its Library ho
 - **Prototypes go into Congo files,** never straight into a code project. Only **Pull into a project** changes the user's code.
 - **Ask only when it matters.** Otherwise make a sensible choice and say what you chose.
 
+The entry skills are `/congo`, `/congo-ideas`, `/congo-compete` and `/congo-redesign`. They are ways in, not the only ones: any request in plain words works.
+
 The Congo CLI commands, sign-in and subscription rules are in Impeccable's `reference/congo.md`. Library source comes only through Congo's CLI or MCP under the user's own sign-in; never ask for or handle their credentials. Never name specific Congo apps from memory: choose from what `congo templates --json` and `congo search` return today.
+
+## Without a Congo subscription
+
+Library source needs a subscription: every source pull (`congo create`, `congo add`, `WS prepare`) only works for a signed-in account with one. Explore, search, screenshots and previews are free and need no account. `congo whoami --json` shows `subscription.active`. Prototyping does not need it.
+
+When the user is not signed in or has no subscription, do not stop and do not fail the request:
+
+1. Tell them once, in a line: Library source needs a Congo subscription (`congo login` if they have one, [gocongo.ai/pricing](https://gocongo.ai/pricing) if not), and you are building this one with your own tools.
+2. Build the prototype yourself: `WS new`, then write a static, clickable `preview/index.html` for the main screen with its styles and only the scripts its interactions need, and set `status` to `ready` in `prototype.json`. A redesign of their own project works from their code as usual.
+3. It lands in Prototypes like any other, and Pull into a project still works.
+
+Never try to get Library source another way.
 
 ## Congo files
 

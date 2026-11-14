@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Topbar } from "../components/AppShell";
 import DesignCard, { type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
 import { useClickOutside } from "../components/Ui";
-import { BackIcon, CheckIcon, ChevronDownIcon, SearchIcon } from "../Icons";
+import { BackIcon, CheckIcon, ChevronDownIcon, FilterIcon, GridIcon, SearchIcon, SortIcon } from "../Icons";
 import { getLibraryApps, getLibraryScreens, getSaved, getScreenCategories } from "../api";
 import type { Design, LibraryApp, LibraryScreen, SavedState, ScreenCategory, TrayItem } from "../types";
 
@@ -104,7 +104,7 @@ const LABELS: Record<LibraryMode, string> = { apps: "Apps", screens: "Screens", 
 const HINTS: Record<LibraryMode, string> = {
   apps: "Browse Congo apps and open one",
   screens: "Browse every screen directly",
-  saved: "Apps you saved on buildwithcongo.com",
+  saved: "Apps you saved on gocongo.ai",
 };
 
 function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryMode) => void }) {
@@ -150,20 +150,116 @@ function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryM
   );
 }
 
+interface ToolOption {
+  value: string;
+  label: string;
+  group?: string | null;
+}
+
+/** How many cards sit across on a wide window: the person's choice, kept in this browser. */
+const COLUMNS_KEY = "congo-explore-columns";
+const COLUMN_OPTIONS: ToolOption[] = [
+  { value: "auto", label: "Fit the window" },
+  { value: "2", label: "2 across" },
+  { value: "3", label: "3 across" },
+  { value: "4", label: "4 across" },
+];
+const SORT_OPTIONS: ToolOption[] = [
+  { value: "featured", label: "Featured" },
+  { value: "name", label: "Name, A to Z" },
+  { value: "screens", label: "Most screens" },
+];
+
+function storedColumns(): string {
+  try {
+    const value = window.localStorage.getItem(COLUMNS_KEY) ?? "";
+    return COLUMN_OPTIONS.some((option) => option.value === value) ? value : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+/** An icon in the Explore bar that opens a short list to choose from. */
+function ToolMenu({
+  label,
+  icon,
+  value,
+  fallback,
+  options,
+  onChange,
+  className = "",
+}: {
+  label: string;
+  icon: ReactNode;
+  value: string;
+  /** The value that means nothing is chosen; any other marks the icon. */
+  fallback: string;
+  options: ToolOption[];
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside<HTMLDivElement>(open, () => setOpen(false));
+  const current = options.find((option) => option.value === value);
+  const chosen = value !== fallback && current ? current.label : null;
+  let group: string | null = null;
+  return (
+    <div className={`library-tool ${className}`} ref={ref}>
+      <button
+        type="button"
+        className="library-tool-button"
+        aria-label={chosen ? `${label}: ${chosen}` : label}
+        title={chosen ? `${label}: ${chosen}` : label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        data-active={chosen ? true : undefined}
+        onClick={() => setOpen((state) => !state)}
+      >
+        {icon}
+      </button>
+      {open ? (
+        <div className="composer-popover library-tool-menu" role="menu" aria-label={label}>
+          <p className="library-tool-title">{label}</p>
+          {options.map((option) => {
+            const heading = option.group && option.group !== group ? option.group : null;
+            if (option.group) group = option.group;
+            return (
+              <Fragment key={option.value}>
+                {heading ? <p className="library-tool-group">{heading}</p> : null}
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={option.value === value}
+                  className="library-tool-option"
+                  data-selected={option.value === value || undefined}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="option-radio">{option.value === value ? <CheckIcon size={11} /> : null}</span>
+                  {option.label}
+                </button>
+              </Fragment>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Filters({
   query,
   onQuery,
-  category,
-  onCategory,
-  categories,
   placeholder,
+  tools,
 }: {
   query: string;
   onQuery: (value: string) => void;
-  category?: string;
-  onCategory?: (value: string) => void;
-  categories?: ScreenCategory[];
   placeholder: string;
+  /** The view, category and sort icons. */
+  tools?: ReactNode;
 }) {
   return (
     <div className="library-filters">
@@ -177,21 +273,7 @@ function Filters({
           aria-label={placeholder}
         />
       </label>
-      {onCategory && categories ? (
-        <select
-          className="library-category"
-          value={category ?? ""}
-          onChange={(event) => onCategory(event.target.value)}
-          aria-label="Screen category"
-        >
-          <option value="">All categories</option>
-          {categories.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.title}
-            </option>
-          ))}
-        </select>
-      ) : null}
+      {tools}
     </div>
   );
 }
@@ -207,6 +289,7 @@ export default function LibraryView({
   onAction,
   selected,
   onToggleSelect,
+  onNoteItem,
 }: {
   mode: LibraryMode;
   appSlug?: string;
@@ -219,6 +302,8 @@ export default function LibraryView({
   /** Tray keys of the items in the request tray. */
   selected: Set<string>;
   onToggleSelect: (item: TrayItem) => void;
+  /** A note typed on a card: the item joins the request with that note. */
+  onNoteItem: (item: TrayItem, note: string) => void;
 }) {
   const [saved, setSaved] = useState<SavedState | null>(null);
   const [apps, setApps] = useState<LibraryApp[] | null>(null);
@@ -230,6 +315,10 @@ export default function LibraryView({
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState("");
+  const [appCategories, setAppCategories] = useState<{ id: string; title: string }[]>([]);
+  const [appCategory, setAppCategory] = useState("");
+  const [sort, setSort] = useState("featured");
+  const [columns, setColumns] = useState(storedColumns);
   const sentinel = useRef<HTMLDivElement | null>(null);
   const serial = useRef(0);
 
@@ -257,7 +346,10 @@ export default function LibraryView({
   const loadApps = useCallback(() => {
     setError(null);
     getLibraryApps()
-      .then((value) => setApps(value.apps))
+      .then((value) => {
+        setApps(value.apps);
+        setAppCategories(value.categories ?? []);
+      })
       .catch((reason: Error) => setError(reason.message));
   }, []);
 
@@ -326,11 +418,61 @@ export default function LibraryView({
       const slugs = new Set(saved.slugs);
       list = apps.filter((item) => ids.has(item.id) || slugs.has(item.slug));
     }
-    if (!needle) return list;
-    return list.filter((item) =>
-      [item.name, item.summary, item.category ?? "", item.inspiredBy ?? ""].some((text) => text.toLowerCase().includes(needle)),
-    );
-  }, [apps, debounced, savedMode, saved]);
+    if (appCategory) list = list.filter((item) => item.category === appCategory);
+    if (needle) {
+      list = list.filter((item) =>
+        [item.name, item.summary, item.category ?? "", item.inspiredBy ?? ""].some((text) => text.toLowerCase().includes(needle)),
+      );
+    }
+    // Featured is the order Congo lists them in.
+    if (sort === "name") list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === "screens") list = [...list].sort((a, b) => (b.pageCount ?? 0) - (a.pageCount ?? 0));
+    return list;
+  }, [apps, debounced, savedMode, saved, appCategory, sort]);
+
+  const tools = (
+    <>
+      {showScreens && !appSlug ? (
+        <ToolMenu
+          label="Category"
+          icon={<FilterIcon size={16} />}
+          value={category}
+          fallback=""
+          options={[{ value: "", label: "All categories" }, ...categories.map((item) => ({ value: item.id, label: item.title, group: item.group }))]}
+          onChange={setCategory}
+        />
+      ) : null}
+      {!showScreens ? (
+        <>
+          <ToolMenu
+            label="Category"
+            icon={<FilterIcon size={16} />}
+            value={appCategory}
+            fallback=""
+            options={[{ value: "", label: "All categories" }, ...appCategories.map((item) => ({ value: item.id, label: item.title }))]}
+            onChange={setAppCategory}
+          />
+          <ToolMenu label="Sort" icon={<SortIcon size={16} />} value={sort} fallback="featured" options={SORT_OPTIONS} onChange={setSort} />
+        </>
+      ) : null}
+      <ToolMenu
+        className="library-tool-view"
+        label="View"
+        icon={<GridIcon size={16} />}
+        value={columns}
+        fallback="auto"
+        options={COLUMN_OPTIONS}
+        onChange={(value) => {
+          setColumns(value);
+          try {
+            window.localStorage.setItem(COLUMNS_KEY, value);
+          } catch {
+            // Private windows may refuse storage; the choice still holds for this visit.
+          }
+        }}
+      />
+    </>
+  );
 
   const title = appSlug ? (
     <button type="button" className="library-back" onClick={onBack} aria-label="Back to apps">
@@ -347,11 +489,10 @@ export default function LibraryView({
       query={query}
       onQuery={setQuery}
       placeholder={appSlug ? `Search ${app?.name ?? "this app"}'s screens` : showScreens ? "Search screens" : "Search apps"}
-      category={category}
-      onCategory={showScreens && !appSlug ? setCategory : undefined}
-      categories={categories}
+      tools={tools}
     />
   );
+
 
   return (
     <div className="main-scroll community-scroll">
@@ -398,7 +539,7 @@ export default function LibraryView({
         </div>
       ) : null}
 
-      <div className="community-grid">
+      <div className="community-grid explore-grid" data-columns={columns === "auto" ? undefined : columns}>
         {showScreens
           ? screens.map((screen) => {
               const design = screenDesign(screen);
@@ -417,6 +558,8 @@ export default function LibraryView({
                   selected={isSelected}
                   onToggleSelected={() => onToggleSelect(item)}
                   clickDeselects={false}
+                  natural
+                  onNote={(note) => onNoteItem(item, note)}
                 />
               );
             })
@@ -437,6 +580,8 @@ export default function LibraryView({
                   selected={isSelected}
                   onToggleSelected={() => onToggleSelect(item)}
                   clickDeselects={false}
+                  natural
+                  onNote={(note) => onNoteItem(item, note)}
                 />
               );
             })}
@@ -459,7 +604,7 @@ export default function LibraryView({
                 ? savedMode
                   ? saved?.reason
                     ? ""
-                    : "Nothing saved yet. Save apps on buildwithcongo.com and they show here."
+                    : "Nothing saved yet. Save apps on gocongo.ai and they show here."
                   : "No apps match. Try another search."
                 : `${filteredApps.length} ${savedMode ? "saved " : ""}apps · open one to see its screens`
               : ""}

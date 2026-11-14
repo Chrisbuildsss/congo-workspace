@@ -347,7 +347,8 @@ export function readSourceFiles(rootDir) {
   });
 
   // The Congo skills: `congo`, plus its optional helpers (`congo-compete`,
-  // `congo-ideas`), each a folder under skills/ with a SKILL.src.md.
+  // `congo-ideas`, `congo-redesign`), each a folder under skills/ with a
+  // SKILL.src.md.
   const congoRoot = path.join(rootDir, 'skills');
   const congoNames = fs.existsSync(congoRoot)
     ? fs.readdirSync(congoRoot).filter((n) => n === 'congo' || n.startsWith('congo-')).sort()

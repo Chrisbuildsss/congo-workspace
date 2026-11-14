@@ -70,7 +70,20 @@ export default function DesignFrame({
   if (design.image) {
     return (
       <div className="surface design-frame">
-        <img src={design.image} alt="" loading="lazy" decoding="async" />
+        <img
+          src={design.image}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          // Its real width, so a card that shows the picture whole never draws it larger than it is.
+          ref={(node) => {
+            if (node?.complete && node.naturalWidth) node.style.setProperty("--natural-width", `${node.naturalWidth}px`);
+          }}
+          onLoad={(event) => {
+            const img = event.currentTarget;
+            if (img.naturalWidth) img.style.setProperty("--natural-width", `${img.naturalWidth}px`);
+          }}
+        />
       </div>
     );
   }

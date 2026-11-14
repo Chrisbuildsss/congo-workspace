@@ -1,0 +1,101 @@
+{
+  "shots": [
+    "workspace\\qa\\explore-fixes\\after-2-across-explore-1440-light.png",
+    "workspace\\qa\\explore-fixes\\after-2-across-explore-screens-1440-light.png",
+    "workspace\\qa\\explore-fixes\\after-2-across-explore-1440-dark.png",
+    "workspace\\qa\\explore-fixes\\after-2-across-explore-screens-1440-dark.png"
+  ],
+  "pictures": {
+    "explore-1440": {
+      "columns": 2,
+      "cards": 17,
+      "checked": 10,
+      "cut": 0,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "1586x992",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1626x967",
+          "card": "684x407",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1586x992",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        }
+      ]
+    },
+    "explore-screens-1440": {
+      "columns": 2,
+      "cards": 24,
+      "checked": 10,
+      "cut": 0,
+      "scaledUp": 0,
+      "sample": [
+        {
+          "real": "2160x1350",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x475",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "2160x1350",
+          "card": "684x428",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x475",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x475",
+          "cut": false,
+          "scaledUp": false
+        },
+        {
+          "real": "1440x1000",
+          "card": "684x475",
+          "cut": false,
+          "scaledUp": false
+        }
+      ]
+    }
+  },
+  "errors": []
+}

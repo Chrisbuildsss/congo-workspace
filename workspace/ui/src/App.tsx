@@ -234,6 +234,15 @@ export default function App() {
         : { ...tray, items: [...tray.items, item] },
     );
   };
+  /** A note typed on an Explore card: the item joins the request with it. */
+  const noteTrayItem = (item: TrayItem, note: string) => {
+    const key = trayKey(item);
+    setTray(
+      traySelected.has(key)
+        ? { ...tray, items: tray.items.map((entry) => (trayKey(entry) === key ? { ...entry, note } : entry)) }
+        : { ...tray, items: [...tray.items, { ...item, note }] },
+    );
+  };
   const designsFor = (ids: string[]) =>
     ids.map((id) => state?.designs[id]).filter((d): d is Design => Boolean(d));
   const bookmarked = new Set(state?.projects.flatMap((p) => p.designIds) ?? []);
@@ -512,6 +521,18 @@ export default function App() {
     }
   };
 
+  /** Give up on requests that are still waiting; their placeholders go. */
+  const cancelRequests = async (ids: string[]) => {
+    try {
+      let next: WorkspaceState | null = null;
+      for (const id of ids) next = await api<WorkspaceState>("/api/requests/cancel", { id });
+      if (next) setState(next);
+      showToast("Request cancelled");
+    } catch (error) {
+      showToast((error as Error).message);
+    }
+  };
+
   const deleteDesign = async () => {
     if (!deleteFor) return;
     try {
@@ -584,6 +605,7 @@ export default function App() {
               onAction={handleCardAction}
               selected={traySelected}
               onToggleSelect={toggleTray}
+              onNoteItem={noteTrayItem}
             />
           ) : null}
 
@@ -662,6 +684,7 @@ export default function App() {
               onAppChange={setProtoAppId}
               onOpenDesign={(design) => openDetail({ design, context: "Prototypes" })}
               onCardAction={handleCardAction}
+              onCancel={(ids) => void cancelRequests(ids)}
               chat={WORKSPACE_CHAT}
             />
           ) : null}
@@ -676,7 +699,11 @@ export default function App() {
                 setTray({ ...tray, note: value });
               }}
               onSubmit={(values) => void sendTray(values)}
-              placeholder={tray.items.length ? "A note for the whole request (optional)..." : "Select apps or screens, or describe what to build..."}
+              placeholder={
+                tray.items.length
+                  ? "A note for the whole request (optional)..."
+                  : "Select apps or screens, or describe what to build..."
+              }
               apps={state?.apps ?? []}
               appId={trayDestination}
               onAppChange={setTrayAppId}

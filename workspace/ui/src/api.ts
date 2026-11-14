@@ -54,7 +54,7 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
 export const getStatus = () => api<WorkspaceStatus>("/api/status");
 export const getState = () => api<WorkspaceState>("/api/state");
 
-export const getLibraryApps = () => api<{ apps: LibraryApp[] }>("/api/library/apps");
+export const getLibraryApps = () => api<{ apps: LibraryApp[]; categories?: { id: string; title: string }[] }>("/api/library/apps");
 export const getScreenCategories = () => api<{ categories: ScreenCategory[] }>("/api/library/categories");
 export const getLibraryScreens = (query: { q?: string; app?: string; category?: string; offset?: number; limit?: number }) => {
   const params = new URLSearchParams();

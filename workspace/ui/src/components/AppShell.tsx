@@ -235,7 +235,7 @@ export function Sidebar({
               <a
                 className="profile-item"
                 role="menuitem"
-                href="https://gocongo.ai/settings"
+                href="https://gocongo.ai/account"
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setProfileOpen(false)}

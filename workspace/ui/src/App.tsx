@@ -88,8 +88,6 @@ export default function App() {
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
   const [offline, setOffline] = useState(false);
   const [globalPrompt, setGlobalPrompt] = useState("");
-  /** Whether Explore is showing the Library (the account has a subscription). */
-  const [exploreOpen, setExploreOpen] = useState(true);
   const [chatPrompt, setChatPrompt] = useState("");
   // The local workspace has no chat of its own: the person talks to their AI
   // in its own chat, and what they send from Explore reaches it there. The
@@ -608,7 +606,6 @@ export default function App() {
               selected={traySelected}
               onToggleSelect={toggleTray}
               onNoteItem={noteTrayItem}
-              onAccess={setExploreOpen}
             />
           ) : null}
 
@@ -705,9 +702,7 @@ export default function App() {
               placeholder={
                 tray.items.length
                   ? "A note for the whole request (optional)..."
-                  : exploreOpen
-                    ? "Select apps or screens, or describe what to build..."
-                    : "Describe what to prototype..."
+                  : "Select apps or screens, or describe what to build..."
               }
               apps={state?.apps ?? []}
               appId={trayDestination}

@@ -1,4 +1,4 @@
-import type { LibraryApp, LibraryScreen, SavedState, ScreenCategory, Tray, WorkspaceState, WorkspaceStatus, LibraryAccess } from "./types";
+import type { LibraryApp, LibraryScreen, SavedState, ScreenCategory, Tray, WorkspaceState, WorkspaceStatus } from "./types";
 
 const TOKEN_KEY = "congo-workspace-token";
 
@@ -65,7 +65,6 @@ export const getLibraryScreens = (query: { q?: string; app?: string; category?: 
 };
 
 /** The account's Saved items, through the person's own Congo CLI. */
-export const getLibraryAccess = (refresh = false) => api<LibraryAccess>(`/api/library/access${refresh ? "?refresh=1" : ""}`);
 export const getSaved = (refresh = false) => api<SavedState>(`/api/library/saved${refresh ? "?refresh=1" : ""}`);
 
 /** Keeps the request tray in the workspace, so a reload loses nothing. */

@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { startWorkspaceServer } from '../skills/congo/scripts/workspace/server/server.mjs';
 import { describeAction, isBundleOnly, steerMessage, buildRequest, normalizeTray } from '../skills/congo/scripts/workspace/server/requests.mjs';
-import { libraryAccess, savedItems } from '../skills/congo/scripts/workspace/server/congo-cli.mjs';
+import { savedItems } from '../skills/congo/scripts/workspace/server/congo-cli.mjs';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'congo-workspace-requests-'));
 const root = path.join(tmp, 'home');
@@ -334,43 +334,33 @@ test("the Saved filter asks the person's own Congo CLI and reads only catalog id
   assert.match(missing.reason, /Install the Congo CLI/);
 });
 
-test('Explore shows the Library only to a signed-in account with a subscription; Prototypes still takes requests', async () => {
-  const open = (await api('/api/library/access')).value;
-  assert.deepEqual([open.allowed, open.state], [true, 'active']);
-  assert.equal(JSON.stringify(open).includes('person@example.test'), false, 'the email stays in the CLI');
-
+test('Explore is free: it answers without a subscription or a sign-in, and never asks the CLI about the account', async () => {
   const active = account;
+  const asked = [];
   try {
-    // Signed in, no subscription.
-    account = { code: 0, stdout: JSON.stringify({ email: 'person@example.test', subscription: { active: false, paidThrough: null } }), stderr: '' };
-    const lapsed = (await api('/api/library/access?refresh=1')).value;
-    assert.deepEqual([lapsed.allowed, lapsed.state], [false, 'no-subscription']);
-    for (const route of ['/api/library/apps', '/api/library/screens', '/api/library/categories', '/api/library/saved']) {
-      const refused = await api(route);
-      assert.equal(refused.status, 403, route);
-      assert.equal(refused.value.access.state, 'no-subscription');
+    for (const state of [
+      { code: 0, stdout: JSON.stringify({ email: 'person@example.test', subscription: { active: false, paidThrough: null } }), stderr: '' },
+      { code: 1, stdout: '', stderr: 'Sign in required. Run `congo login`.' },
+    ]) {
+      account = state;
+      for (const route of ['/api/library/apps', '/api/library/screens', '/api/library/categories']) {
+        const answer = await api(route);
+        assert.equal(answer.status, 200, route);
+        assert.equal(answer.value.access, undefined, route);
+        asked.push(route);
+      }
+      // A request for a prototype still goes to the AI.
+      const thread = (await api('/api/composes', {})).value.compose.id;
+      const request = await api('/api/requests', { type: 'compose', composeId: thread, text: 'A booking page for a barber' });
+      assert.equal(request.status, 200);
+      assert.ok(request.value.state.designs[`${request.value.request.id}-1`]);
     }
-    // A request for a prototype still goes to the AI.
-    const thread = (await api('/api/composes', {})).value.compose.id;
-    const asked = await api('/api/requests', { type: 'compose', composeId: thread, text: 'A booking page for a barber' });
-    assert.equal(asked.status, 200);
-    assert.ok(asked.value.state.designs[`${asked.value.request.id}-1`]);
-
-    // Not signed in.
-    account = { code: 1, stdout: '', stderr: 'Sign in required. Run `congo login`.' };
-    const out = (await api('/api/library/access?refresh=1')).value;
-    assert.deepEqual([out.allowed, out.state], [false, 'signed-out']);
   } finally {
     account = active;
   }
-  assert.equal((await api('/api/library/access?refresh=1')).value.allowed, true);
-
-  const missing = await libraryAccess({ run: async () => ({ code: null, stdout: '', stderr: '', error: Object.assign(new Error('spawn congo ENOENT'), { code: 'ENOENT' }) }) });
-  assert.deepEqual([missing.allowed, missing.state], [false, 'no-cli']);
-  const offline = await libraryAccess({ run: async () => ({ code: 1, stdout: '', stderr: 'fetch failed' }) });
-  assert.deepEqual([offline.allowed, offline.state, offline.reason], [false, 'unknown', 'fetch failed']);
-  const garbled = await libraryAccess({ run: async () => ({ code: 0, stdout: 'hello', stderr: '' }) });
-  assert.deepEqual([garbled.allowed, garbled.state], [false, 'unknown']);
+  assert.equal(asked.length, 6);
+  // The old check is gone, not just switched off.
+  assert.notEqual((await api('/api/library/access')).status, 200);
 });
 
 test('a request that is still waiting can be cancelled: its placeholder and its file go', async () => {

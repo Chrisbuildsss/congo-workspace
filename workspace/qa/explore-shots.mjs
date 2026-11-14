@@ -74,10 +74,9 @@ try {
         url.hash = '';
         url.pathname = route;
         await page.goto(url.href + hash, { waitUntil: 'domcontentloaded' }).catch(() => {});
-        await page.waitForSelector('.design-card img, .explore-gate, .library-error', { timeout: 30000 }).catch(() => {});
+        await page.waitForSelector('.design-card img, .library-error', { timeout: 30000 }).catch(() => {});
         // Covers are large: wait until the ones in view have fully arrived.
         const loaded = await page.waitForFunction(() => {
-          if (document.querySelector('.explore-gate')) return true;
           const inView = [...document.querySelectorAll('.design-card img')].filter((img) => img.getBoundingClientRect().top < window.innerHeight);
           return inView.length > 0 && inView.every((img) => img.complete && img.naturalWidth > 0);
         }, null, { timeout: wait }).then(() => true).catch(() => false);

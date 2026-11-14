@@ -3,8 +3,8 @@ import { Topbar } from "../components/AppShell";
 import DesignCard, { type CardAction, type MenuItem, type QuickAction } from "../components/DesignCard";
 import { useClickOutside } from "../components/Ui";
 import { BackIcon, CheckIcon, ChevronDownIcon, FilterIcon, GridIcon, SearchIcon, SortIcon } from "../Icons";
-import { getLibraryAccess, getLibraryApps, getLibraryScreens, getSaved, getScreenCategories } from "../api";
-import type { Design, LibraryAccess, LibraryApp, LibraryScreen, SavedState, ScreenCategory, TrayItem } from "../types";
+import { getLibraryApps, getLibraryScreens, getSaved, getScreenCategories } from "../api";
+import type { Design, LibraryApp, LibraryScreen, SavedState, ScreenCategory, TrayItem } from "../types";
 
 /** Apps, Screens, or the apps saved on the account (the website's Saved). */
 export type LibraryMode = "apps" | "screens" | "saved";
@@ -278,57 +278,6 @@ function Filters({
   );
 }
 
-const PRICING = "https://gocongo.ai/pricing";
-
-/**
- * Shown in place of the Library when the account has no subscription. A
- * courtesy, not protection: this code is open, and Congo's server is what
- * refuses source pulls without a subscription.
- */
-function ExploreGate({ access, checking, onCheck }: { access: LibraryAccess; checking: boolean; onCheck: () => void }) {
-  const signedIn = access.state === "no-subscription";
-  return (
-    <div className="explore-gate" role="status">
-      <div className="empty-grid-glyph">
-        <span /><span /><span /><span />
-      </div>
-      <h2>Explore needs a Congo subscription</h2>
-      <p>
-        Explore is the Congo Library: real, working apps and their screens, with source. It opens for a signed-in account
-        with an active subscription.
-      </p>
-      {access.state === "signed-out" ? (
-        <p className="explore-gate-step">
-          Already subscribed? Run <code>congo login</code> in your terminal, then check again.
-        </p>
-      ) : null}
-      {signedIn ? <p className="explore-gate-step">You are signed in, but this account has no active subscription.</p> : null}
-      {access.state === "no-cli" ? (
-        <p className="explore-gate-step">
-          The Congo CLI is not installed. Run <code>npm install -g gocongo</code>, then <code>congo login</code>.
-        </p>
-      ) : null}
-      {access.state === "unknown" ? (
-        <p className="explore-gate-step">
-          Your account could not be checked{access.reason ? `: ${access.reason}` : "."} If you are signed out, run{" "}
-          <code>congo login</code>.
-        </p>
-      ) : null}
-      <div className="explore-gate-actions">
-        <a href={PRICING} target="_blank" rel="noopener noreferrer">
-          {signedIn ? "Subscribe on gocongo.ai ↗" : "See pricing on gocongo.ai ↗"}
-        </a>
-        <button type="button" onClick={onCheck} disabled={checking}>
-          {checking ? "Checking…" : "Check again"}
-        </button>
-      </div>
-      <p className="explore-gate-note">
-        Prototypes works without a subscription. Ask your AI for a prototype and it appears there.
-      </p>
-    </div>
-  );
-}
-
 export default function LibraryView({
   mode,
   appSlug,
@@ -341,7 +290,6 @@ export default function LibraryView({
   selected,
   onToggleSelect,
   onNoteItem,
-  onAccess,
 }: {
   mode: LibraryMode;
   appSlug?: string;
@@ -356,12 +304,7 @@ export default function LibraryView({
   onToggleSelect: (item: TrayItem) => void;
   /** A note typed on a card: the item joins the request with that note. */
   onNoteItem: (item: TrayItem, note: string) => void;
-  /** Tells the shell whether the Library is showing, once known. */
-  onAccess?: (allowed: boolean) => void;
 }) {
-  const [access, setAccess] = useState<LibraryAccess | null>(null);
-  const [checking, setChecking] = useState(false);
-  const allowed = access?.allowed === true;
   const [saved, setSaved] = useState<SavedState | null>(null);
   const [apps, setApps] = useState<LibraryApp[] | null>(null);
   const [categories, setCategories] = useState<ScreenCategory[]>([]);
@@ -382,37 +325,8 @@ export default function LibraryView({
   const showScreens = mode === "screens" || Boolean(appSlug);
   const savedMode = mode === "saved" && !appSlug;
 
-  const checkAccess = useCallback(
-    (refresh: boolean) => {
-      setChecking(true);
-      getLibraryAccess(refresh)
-        .then((value) => {
-          setAccess(value);
-          onAccess?.(value.allowed);
-        })
-        .catch((reason: Error) => {
-          setAccess({ allowed: false, state: "unknown", reason: reason.message });
-          onAccess?.(false);
-        })
-        .finally(() => setChecking(false));
-    },
-    [onAccess],
-  );
-
   useEffect(() => {
-    checkAccess(false);
-  }, [checkAccess]);
-
-  // Signing in happens in a terminal: look again when the person comes back.
-  useEffect(() => {
-    if (!access || allowed) return;
-    const onFocus = () => checkAccess(true);
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [access, allowed, checkAccess]);
-
-  useEffect(() => {
-    if (!savedMode || !allowed) return;
+    if (!savedMode) return;
     let live = true;
     getSaved()
       .then((value) => live && setSaved(value))
@@ -420,7 +334,7 @@ export default function LibraryView({
     return () => {
       live = false;
     };
-  }, [savedMode, allowed]);
+  }, [savedMode]);
   const app = useMemo(() => apps?.find((item) => item.slug === appSlug) ?? null, [apps, appSlug]);
   const actionsNote = aiConnected ? undefined : "Needs a connected AI";
 
@@ -440,12 +354,11 @@ export default function LibraryView({
   }, []);
 
   useEffect(() => {
-    if (!allowed) return;
     loadApps();
     getScreenCategories()
       .then((value) => setCategories(value.categories))
       .catch(() => {});
-  }, [loadApps, allowed]);
+  }, [loadApps]);
 
   const loadScreens = useCallback(
     async (reset: boolean) => {
@@ -475,12 +388,12 @@ export default function LibraryView({
 
   // New filters start a fresh list.
   useEffect(() => {
-    if (!showScreens || !allowed) return;
+    if (!showScreens) return;
     setScreens([]);
     setTotal(null);
     void loadScreens(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showScreens, appSlug, category, debounced, allowed]);
+  }, [showScreens, appSlug, category, debounced]);
 
   // Infinite scroll.
   useEffect(() => {
@@ -580,14 +493,6 @@ export default function LibraryView({
     />
   );
 
-  if (access && !allowed) {
-    return (
-      <div className="main-scroll community-scroll">
-        <Topbar left={<span className="explore-gate-title">Explore</span>} className="library-topbar" />
-        <ExploreGate access={access} checking={checking} onCheck={() => checkAccess(true)} />
-      </div>
-    );
-  }
 
   return (
     <div className="main-scroll community-scroll">
@@ -680,7 +585,7 @@ export default function LibraryView({
                 />
               );
             })}
-        {(!access || (showScreens ? loading && screens.length === 0 : (!apps || (savedMode && !saved)) && !error)) ? <GeneratingCards /> : null}
+        {(showScreens ? loading && screens.length === 0 : (!apps || (savedMode && !saved)) && !error) ? <GeneratingCards /> : null}
         {showScreens && loading && screens.length > 0 ? <GeneratingCards count={2} /> : null}
       </div>
 

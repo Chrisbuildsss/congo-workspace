@@ -25,6 +25,16 @@ Checked in a browser against a scratch workspace, with a stand-in Congo CLI answ
 - **Bigger navigation.** The two tabs in the left rail have larger icons (24 px), and larger labels when the sidebar is open.
 - **`/congo-redesign`**, a fourth entry skill beside `/congo`, `/congo-ideas` and `/congo-compete`: redesign the person's existing app, one page or the whole app, as prototypes; nothing changes in their code before Pull into a project. Its text is covered by tests; it was not run with an AI.
 
+## Changes for the move to gocongo.ai (November 14)
+
+Congo moved to gocongo.ai and its CLI package is now `@gocongo/cli` (0.2.8). The workspace follows:
+
+- The library is read from `https://gocongo.ai` by default (`CONGO_REGISTRY` still overrides it).
+- Every link and install command the workspace, the skills and the README show names gocongo.ai and `@gocongo/cli`.
+- The workspace interface declares the Node types its build needs (`@types/node` in `workspace/ui/package.json`), so it builds on a clean machine.
+
+Checked on Linux in a scratch workspace with stand-in Congo CLIs, none of it with an AI: the Congo and workspace test files (52 tests), `bun run build:release` and `bun run test` pass; Explore loads all 17 apps from gocongo.ai; the two subscription notes were retaken at 390 and 1440 px in light and dark (`workspace/qa/explore-fixes/after-gate-*`). Those eight pictures come from Linux Chromium, so their text is drawn with a different font than the Windows pictures beside them. Not rerun: everything measured on Windows above.
+
 ## Who did what
 
 | Part | Done by |

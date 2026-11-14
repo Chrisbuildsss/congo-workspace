@@ -104,7 +104,7 @@ const LABELS: Record<LibraryMode, string> = { apps: "Apps", screens: "Screens", 
 const HINTS: Record<LibraryMode, string> = {
   apps: "Browse Congo apps and open one",
   screens: "Browse every screen directly",
-  saved: "Apps you saved on buildwithcongo.com",
+  saved: "Apps you saved on gocongo.ai",
 };
 
 function Switcher({ mode, onMode }: { mode: LibraryMode; onMode: (mode: LibraryMode) => void }) {
@@ -278,7 +278,7 @@ function Filters({
   );
 }
 
-const PRICING = "https://buildwithcongo.com/pricing";
+const PRICING = "https://gocongo.ai/pricing";
 
 /**
  * Shown in place of the Library when the account has no subscription. A
@@ -305,7 +305,7 @@ function ExploreGate({ access, checking, onCheck }: { access: LibraryAccess; che
       {signedIn ? <p className="explore-gate-step">You are signed in, but this account has no active subscription.</p> : null}
       {access.state === "no-cli" ? (
         <p className="explore-gate-step">
-          The Congo CLI is not installed. Run <code>npm install -g @buildwithcongo/cli</code>, then <code>congo login</code>.
+          The Congo CLI is not installed. Run <code>npm install -g @gocongo/cli</code>, then <code>congo login</code>.
         </p>
       ) : null}
       {access.state === "unknown" ? (
@@ -316,7 +316,7 @@ function ExploreGate({ access, checking, onCheck }: { access: LibraryAccess; che
       ) : null}
       <div className="explore-gate-actions">
         <a href={PRICING} target="_blank" rel="noopener noreferrer">
-          {signedIn ? "Subscribe on buildwithcongo.com ↗" : "See pricing on buildwithcongo.com ↗"}
+          {signedIn ? "Subscribe on gocongo.ai ↗" : "See pricing on gocongo.ai ↗"}
         </a>
         <button type="button" onClick={onCheck} disabled={checking}>
           {checking ? "Checking…" : "Check again"}
@@ -699,7 +699,7 @@ export default function LibraryView({
                 ? savedMode
                   ? saved?.reason
                     ? ""
-                    : "Nothing saved yet. Save apps on buildwithcongo.com and they show here."
+                    : "Nothing saved yet. Save apps on gocongo.ai and they show here."
                   : "No apps match. Try another search."
                 : `${filteredApps.length} ${savedMode ? "saved " : ""}apps · open one to see its screens`
               : ""}

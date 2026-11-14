@@ -154,7 +154,7 @@ test('projects: save designs and library items, rename, remove, delete, and keep
   const projectA = saved.project.id;
   const lib = {
     id: 'screen:s1', title: 'Settings', author: 'Ghosted', format: 'desktop',
-    image: 'https://buildwithcongo.com/a.png', previewUrl: 'javascript:alert(1)',
+    image: 'https://gocongo.ai/a.png', previewUrl: 'javascript:alert(1)',
     source: { kind: 'screen', id: 's1', version: 'v1', app: 'ghosted' },
   };
   const savedB = (await api('/api/projects/save', { design: lib, newProjectName: 'B ideas', appId: b.id })).value;
